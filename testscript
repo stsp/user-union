@@ -1,0 +1,25 @@
+#!/bin/sh
+
+echo Hello > /usr/bin/hello
+cp /usr/bin/hello /usr/bin/hello2
+
+mkdir /usr/share10
+cd /usr
+mkdir /usr/share11
+echo Hello again > /dev/null
+
+cd bin
+ln -s mkdir mkdir_symlink
+ln -s /bin/mkdir mkdir_symlink2
+ln -s /tmp/redir/usr/bin/hello slink_usr_bin_hello
+
+ln hello2 hello3
+
+touch /usr/bin/bigbad
+rm /usr/bin/bigbad
+
+echo "We will move this" > /usr/bin/starterfile
+mv /usr/bin/starterfile /usr/bin/starterfile2
+
+pwd > current_directory
+

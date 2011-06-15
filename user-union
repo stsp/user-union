@@ -1,0 +1,202 @@
+#!/bin/sh
+
+# User-space union mount, implemented using LD_PRELOAD.
+# user-union [options] [[--] command]
+#
+# The environment variable USER_UNION_SO, if set, is the
+# name of the .so library to be run.
+# Otherwise, 'user-union.so' is used (in the current directory if -t is set).
+# If it can't load the shared library, you will see error messages like:
+# ERROR: ld.so: object 'user-union.so' from LD_PRELOAD cannot be preloaded: ignored.
+#
+# When accessing a particular directory, the longest-matching directory name
+# is used; if it matches more than one, the first one is used.
+#
+# If no command is given, the $SHELL is executed.
+
+
+# Remove 'space' from IFS, so filenames with spaces work well.
+IFS="$(printf '\n\t')"
+tab="$(printf '\t')"
+# The following is a standards-compliant trick to get newline into a variable:
+newline="$(printf '\nX')"
+newline="${newline%X}"
+
+
+SET_BRANCHES=""
+OVERLAY_DIRECTORY=""
+UNDERLAY_DIRECTORY=""
+DEFAULT_OVERLAY_DIRECTORY="/tmp/redir"
+DEFAULT_UNDERLAY_DIRECTORY="/"
+DEFAULT_NONUNION="/tmp${newline}/var/tmp${newline}/home${newline}/Users"
+MY_USER_UNION=""
+TESTMODE=n
+NOOP=n
+
+add_pair() {
+  # $1 is the overlay, $2 is the underlay
+  [ -n "$SET_BRANCHES" ] && SET_BRANCHES="${SET_BRANCHES}${newline}"
+  SET_BRANCHES="${SET_BRANCHES}$1${tab}$2"
+  SET_BRANCHES="${SET_BRANCHES}${newline}$1/.user-union"
+  if ! mkdir -p "$1/.user-union/opendir/" "$1/.user-union/whitelist/"
+  then
+    echo "FAILURE: Cannot create directories in $1." >&2
+    exit 1
+  fi
+}
+
+usage() {
+printf '%s' <<USAGE
+user-union [OPTIONS] [COMMAND]
+
+Where options are:
+  -a OV UN  Add  an  overlay,  where  overlay  OV  overlays  underlay UN.
+            Attempted writes to "underlay" will instead write  to  "over-
+            lay",  and  any  contents of "overlay" will override those in
+            "underlay".
+
+  -i DIR    Ignore DIR - do not overlay it, even if it’s within a  direc-
+            tory that is overlaid.
+
+  -m UN     Simulated mount.  Create a temporary overlay directory TEMPO-
+            RARY, print that directory name TEMPORARY as the first output
+            line,  and  then do -a TEMPORARY UN.  If you want to create a
+            "writable" directory  region  and  don’t  care  what  overlay
+            directory is used, use this.
+
+  -n        No-operation (dry run).  Print the resulting USER_UNION using
+            "od -c" and exit.  This is intended for testing purposes.
+
+  -o OV     Set the default overlay directory to OV which  is  used  when
+            there  are no other commands determining what to overlay; see
+            the description.
+
+  -t        Test mode. Use current directory’s  "user-union.so"  library,
+            instead of searching the usual library directories.
+
+  -u UN     Set  the  default underlay directory to UN which is used when
+            there are no other commands determining what to overlay;  see
+            the description.
+USAGE
+exit 0
+}
+
+# Process options.
+# This is written so it can be stacked (user-union in user-union), but
+# there's a limit to how well this can be stacked.
+
+while [ $# -gt 0 ] ; do
+  case "$1" in
+    -a) shift
+        if ! mkdir -p "$1/.user-union" ; then
+          echo "FAILURE: Cannot write to $1 -- are arguments reversed?" >&2
+          exit 1
+        fi
+        add_pair "$1" "$2"
+        shift ; shift ;;
+    -i) shift
+        [ -n "$SET_BRANCHES" ] && SET_BRANCHES="${SET_BRANCHES}${newline}"
+        SET_BRANCHES="${SET_BRANCHES}$1"
+        shift ;;
+    -m) shift
+        anon_overlay="$(mktemp -d)"
+        add_pair "$anon_overlay" "$1"
+        printf "%s\n" "$anon_overlay"
+        shift ;;
+    -n) shift ; NOOP=y ;;
+    -o) shift ; OVERLAY_DIRECTORY="$1" ; shift ;;
+    -t) shift ; TESTMODE="y" ;;
+    -u) shift ; UNDERLAY_DIRECTORY="$1" ; shift ;;
+    -h) shift ; usage ;;
+    --help) shift ; usage ;;
+    -\?) shift ; usage ;;
+    --) shift ; break ;;
+    -*) echo "Unknown option $1. Try --help" >&2 ; shift ; exit 1 ;;
+    *)  break ;;
+  esac
+done
+
+if [ -z "$SET_BRANCHES" ] ; then
+ # Nothing set, create reasonable defaults.
+ add_pair "${OVERLAY_DIRECTORY:-"$DEFAULT_OVERLAY_DIRECTORY"}" \
+          "${UNDERLAY_DIRECTORY:-"$DEFAULT_UNDERLAY_DIRECTORY"}"
+ SET_BRANCHES="${SET_BRANCHES}${newline}${DEFAULT_NONUNION}"
+fi
+
+MY_USER_UNION="$SET_BRANCHES"
+if [ -n "$USER_UNION" ] ; then
+  MY_USER_UNION="$MY_USER_UNION${newline}$USER_UNION"
+fi
+
+# What should we add to LD_PRELOAD (if it's not already there)?
+if [ -z "$USER_UNION_SO" ] ; then
+ MY_USER_UNION_SO="user-union.so"
+ if [ "$TESTMODE" = "y" ] ; then
+   MY_USER_UNION_SO="$(pwd)/$MY_USER_UNION_SO"
+ fi
+else
+ MY_USER_UNION_SO="$USER_UNION_SO"
+fi
+
+# Sanity check of USER_UNION_SO
+case "$USER_UNION_SO" in
+ (*/*)  # Contains a slash
+   case "$USER_UNION_SO" in
+     (/*)  ;;
+     (*)
+         echo "FAIL.  Library name has slash but doesn't begin with one." >&2
+         echo "USER_UNION_SO set to $USER_UNION_SO" >&2
+         exit 1
+         ;;
+   esac
+ ;;
+esac
+
+# Figure out what LD_PRELOAD should become.  Don't add to LD_PRELOAD
+# if it's already there, so that user-union can be (mostly) nestable.
+if [ -z "$LD_PRELOAD" ] ; then
+ MY_LD_PRELOAD="$MY_USER_UNION_SO"
+elif ! printf "%s" "$LD_PRELOAD" | grep -Fq "${MY_USER_UNION_SO}" ; then
+ # LD_PRELOAD has something, but not user-union.
+ # If it has a space at the beginning or end, add the library there.
+ # Else, add it to a "convenient side" (whichever fakeroot likes better).
+ case "$LD_PRELOAD" in
+  ( *) MY_LD_PRELOAD="${MY_USER_UNION_SO}${LD_PRELOAD}" ;;
+  (* ) MY_LD_PRELOAD="${LD_PRELOAD}${MY_USER_UNION_SO}" ;;
+  (*)  MY_LD_PRELOAD="${LD_PRELOAD} ${MY_USER_UNION_SO}" ;;
+ esac
+fi
+
+# We don't want to risk calling anything unexpected after we set
+# LD_PRELOAD or USER_UNION.  Although "test" ("[") is often implemented
+# by the shell, it *might* be implemented by calling a separate program.
+# So we'll set an intermediate variable now,
+# and we can later use case...esac to check it.
+if [ $# -lt 1 ] ; then
+  USE_DEFAULT_COMMAND=y
+else
+  USE_DEFAULT_COMMAND=n
+fi
+
+if [ $NOOP = "y" ] ; then
+ printf '%s' "$MY_USER_UNION" | od -c
+ echo
+ exit 0
+fi
+
+# Run the command, with LD_PRELOAD and USER_UNION set to do the union.
+# We only set LD_PRELOAD and USER_UNION as the very last operations
+# before executing the command to be run.
+export LD_PRELOAD="${MY_LD_PRELOAD}"
+export USER_UNION="$MY_USER_UNION"
+
+case "$USE_DEFAULT_COMMAND" in
+  y) # No command given, run $SHELL.
+    echo "Starting ${SHELL:='/bin/sh'} (exit it to end union mount)."
+    exec "$SHELL"
+    ;;
+  n) # Command given, run it.
+    exec "$@"
+    ;;
+esac
+

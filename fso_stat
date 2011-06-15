@@ -1,0 +1,34 @@
+#!/bin/sh
+
+# Report information on each file given on the command line, one file/line.
+# This is intented to be portable to any POSIX system.
+
+for file
+do
+  printf '%s   ' "$file"
+  if [ -f "$file" ] ; then
+    printf 'f'
+  elif [ -d "$file" ] ; then
+    printf 'd'
+  elif [ -L "$file" ] ; then
+    printf 's'
+  elif [ -b "$file" ] ; then
+    printf 'b'
+  elif [ -c "$file" ] ; then
+    printf 'c'
+  else
+    printf '?'
+  fi
+  read -r file_mode num_links owner group_name bytes date time path <<INFO
+$(ls -l "$file")
+INFO
+  printf " %s" "$bytes"
+  if [ -L "$file" ] ; then
+    linksto="$(printf '%s' "$path" | sed -e 's/^.* -> //')"
+    printf ' -> %s' "$linksto"
+  fi
+  if [ -f "$file" ] ; then
+    printf ' %.20s' "$(md5sum "$file")"
+  fi
+  printf '\n'
+done

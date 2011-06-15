@@ -1,0 +1,40 @@
+Notes on user-union
+
+There's lots of literature about union mounts.  For a survey, see:
+* "Unioning file systems: Architecture, features, and design choices"
+by Valerie Aurora and its successors:
+ http://lwn.net/Articles/324291/
+ http://lwn.net/Articles/325369/
+ http://lwn.net/Articles/327738/
+
+* "Union Mounts in 4.4BSD-Lite"
+by Jan-Simon Pendry and Marshall Kirk McKusick
+http://www.usenix.org/publications/library/proceedings/neworl/full_papers/mckusick.a
+
+
+Using LD_PRELOAD and overriding library calls could use better documentation.
+Some info is at:
+
+"Fun with LD_PRELOAD" by Kevin Pulo
+http://lca2009.linux.org.au/slides/172.pdf
+
+Intercepting arbitrary functions on Windows, UNIX, and Macintosh OS X platforms (2004)
+http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.75.747
+http://www.cs.umd.edu/Library/TRs/CS-TR-4585/CS-TR
+by Daniel S. Myers ,  Adam L. Bazinet ,  Contact Michael P. Cummings ,  For Correspondence
+Center for Bioinformatics and Computational Biology, Institute for Advanced Computer Studies, University of Maryland 
+
+Some other issues with LD_PRELOAD are noted here:
+http://datafarm.apgrid.org/software/latest/README.hook.en.txt
+
+An interesting example is in "ekam" (reverse make):
+http://code.google.com/p/ekam/source/browse/src/intercept.c
+and more generally ekam is at: <http://code.google.com/p/ekam>
+in particular I liked their approach to using C macros, and they
+had some notes on Apple OS X and the *BSDs.
+I used some of their macro approach and naming convention, but ended
+up writing my own code to do it.
+
+
+
+

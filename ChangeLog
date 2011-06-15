@@ -1,0 +1,29 @@
+2011-06-12 David A. Wheeler <dwheeler, at, dwheeler.com>
+	* Last-minute improvements for a first public release.
+	  - Tarball shouldn't include unnecessary files (e.g., .o/.so).
+	  - README should include URL <http://www.dwheeler.com/user-union>.
+
+2011-03-17 David A. Wheeler <dwheeler, at, dwheeler.com>
+	* Switched from BSD-new (3-clause) license to MIT license.
+	  They aren't much different, but MIT is simpler to understand,
+	  and this would make future mergers with auto-destdir easier.
+
+2011-02-21 David A. Wheeler <dwheeler, at, dwheeler.com>
+	* Added a lock around initialization, to make sure the library
+	  is initialized exactly once without problem if there are threads.
+	* Front-ends now "exit 1" if an unknown option is provided,
+	  can present some help info on --help, and output error messages
+	  to stderr (not stdout).
+	* runtest changed so that it doesn't require nonstandard find options.
+	  The program fso_stat requires md5sum to be installed, which
+	  isn't standard but is available everywhere.
+	  We need portable tests so we can test this on various systems!
+	* Wrap many more functions.
+	* Began implementing the *at functions.  Fedora 14's "ln" command
+	  uses "linkat" (older versions didn't use that),
+	  so this is not optional when using Fedora's "ln" command.
+	* Added "use_override_prefix =" and default to true.
+	  This adds additional protection against self-looping.
+
+2011-02-21 David A. Wheeler <dwheeler, at, dwheeler.com>
+	* Initial version.  Wraps fopen(), open(), etc.

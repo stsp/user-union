@@ -1,0 +1,94 @@
+#!/bin/sh
+
+# Run test of user-union
+# Give it the "-a" parameter to ACCEPT the last test results as expected.
+
+# Remove 'space', so filenames with spaces work well.
+IFS="$(printf '\n\t')"
+tab="$(printf '\t')"
+# The following is a standards-compliant trick to get newline into a variable:
+newline="$(printf '\nX')"
+newline="${newline%X}"
+
+
+startdir="$(pwd)"
+overlay="/tmp/redir"
+underlay="/"
+expected="./expected"
+
+PATH="$startdir:$PATH"
+
+# To simulate multiple underlays:
+# nonunion="${nonunion}${newline}/a${tab}/b${tab}/c"
+# nonunion="${newline}/tmp${newline}/home"
+
+# Report on every filesystem object in currect directory, down.
+# TODO: This currently requires GNU extensions (find -printf),
+# need an easy portable way to print data about files.
+reporter() {
+  find .  -exec "$startdir"/fso_stat {} + | sort
+}
+
+if [ ! -d "$expected" ]
+then
+  echo "Can't find expected results directory $expected"
+  exit 1
+fi
+
+# Are we *accepting* the results?
+if [ "$1" = "-a" ]
+then
+  if [ ! -d "$overlay" ]
+  then
+    echo "Can't find overlay directory $overlay"
+    exit 1
+  fi
+  echo "Accepting results in $overlay as expected; copying to $expected."
+  rsync -a "$overlay/" "$expected/"
+  exit 0
+fi
+
+rm -fr "$overlay"
+mkdir "$overlay" || ( echo "Failed to create $overlay" ; exit 1 )
+
+echo "About to run tests!"
+
+# Set MALLOC_CHECK_ to detect some problems.
+export MALLOC_CHECK_=3
+
+# Run the main body of tests:
+./user-union -t -a "$overlay" "$underlay" -i /home -i /tmp -i /var/tmp \
+  ./testscript
+
+# Also do a simple test with run-redir-union, basically a smoke test
+# to make sure it can be run at all:
+demo2="/tmp/demo2"
+rm -fr "$demo2" || die "Can't remove $demo2"
+mkdir -p "$demo2" || die "Can't create $demo2"
+DESTDIR="$demo2" ./run-redir-union -t ln -s /wokka /usr/bin
+if [ -L "$demo2/usr/bin/wokka" ] && [ -d "$overlay/usr/bin" ] ; then
+  mv "$demo2/usr/bin/wokka" "$overlay/usr/bin/wokka"
+else
+  echo "Whups, failed to get correct result from run-redir-union."
+fi
+
+echo
+echo "Tests done.  Comparing to find differences with the expected results:"
+
+
+(cd "$overlay" ; reporter ) > .overlay_results
+(cd "$expected" ; reporter ) > .expected_results
+
+
+if diff -u .expected_results .overlay_results
+then
+  # TODO: Compare the permissions
+  echo "No differences. All tests passed!"
+else
+  echo "DIFFERENCES FOUND."
+  echo "Leading + indicates items the overlay adds, beyond those expected."
+  echo "Leading - indicates items the overlay removes from those expected."
+  echo "Lines show filename, type, size, octal permissions, symlink, checksum."
+  echo "If they're okay, run 'make accept'"
+fi
+

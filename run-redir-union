@@ -1,0 +1,66 @@
+#!/bin/sh
+
+# Automate DESTDIR support using user-union (and LD_PRELOAD)
+
+# TODO: Modify auto-destdir and this program so they can be
+# easily used together (if desired).  Probably another option here
+# to enable it.
+
+if [ -z "$DESTDIR" ] ; then
+  echo "FAIL.  Must set the environment variable DESTDIR." >&2
+  exit 1
+fi
+
+usage() {
+printf '%s\n' <<USAGE
+ run-redir-union [-akht]
+USAGE
+exit 0
+}
+
+# Process options.
+auto_destdir=n
+keep=n
+hidden=n
+options=""
+while [ $# -gt 0 ] ; do
+ case "$1" in
+  -a) auto_destdir=y ; shift ;;
+  -k) keep=y   ; shift ;;
+  -h) hidden=y ; shift ;;
+  -t) options="$options -t" ; shift ;;
+  --help) shift ; usage ;;
+  -h) shift ; usage ;;
+  -\?) shift ; usage ;;
+  --) shift ; break ;;
+  -*) shift ; echo "Unknown option.  Try --help" ; exit 1 ;;
+  *)  break ;;
+ esac
+done
+
+# export REDIR_DESTDIR= run-redir
+
+if [ $# -lt 1 ] ; then
+  echo 'FAIL: need a command to run (such as "make install")!'
+  exit 1
+fi
+
+tempdir="$(mktemp -d)"
+
+special=""
+if [ "$auto_destdir" = "y" ] ; then
+ export REDIR_DESTDIR="$tempdir"
+ special="run-redir"
+fi
+
+$special user-union $options -o "$tempdir" "$@"
+
+if [ "$hidden" = "n" ] ; then
+  rm -fr "$tempdir/.user-union"
+fi
+
+rsync -a "$tempdir/" "$DESTDIR/"
+
+if [ "$keep" = "n" ] ; then
+  rm -fr "$tempdir"
+fi

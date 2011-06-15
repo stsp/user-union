@@ -1,0 +1,93 @@
+.\" 
+.TH RUN-REDIR-UNION "1" "February 2011" "user-union" "User Commands"
+.SH NAME
+run-redir-union \- Automate DESTDIR support using user-union.
+.SH SYNOPSIS
+.B DESTDIR=\fI...\fR run-redir-union [\fIOPTIONS\fR] \fIcommand\fR
+.PP
+.SH DESCRIPTION
+.\" Add any additional description here
+.PP
+This runs \fIcommand\fR and captures all added or changed files
+(using the union mount capability of \fIuser-union\fR).
+After this, it merges the results into the directory $DESTDIR,
+and then removes the original temporary directory.
+It will not capture changes to certain directories;
+for details, see the default settings as described in user-union(1).
+.PP
+Fundamentally, run-redir-union uses user-union to create a union mount.
+An alternative approach for capturing changes during installation
+is make-install(1) in the auto-destdir package, which
+which uses special versions of programs like "cp" instead of LD_PRELOAD.
+Which approach is better depends on the program you are trying
+to install.
+.PP
+See user-union(1) for more about this command.
+
+.SH OPTIONS
+
+.TP 3
+-a
+Also use auto-destdir (specifically, run-redir) to wrap commands.
+This is useful if your basic commands (such as cp, ln, and so on)
+are statically linked and thus cannot be redirected by LD_PRELOAD.
+On most systems you don't want to do this.
+
+.TP
+-k
+Keep temporary directory (instead of erasing it)
+
+.TP
+-h
+Keep and copy hidden user-union information (in .user-union)
+
+.TP
+-t
+Test option, per user-union.  See its documentation for more.
+
+.SH EXAMPLES
+.PP
+A simple example is:
+.RS
+.\" Use .nf (no fill)... .fi (fill) regions for examples.
+.nf
+ DESTDIR="$HOME/mydestdir" run-redir-union make install
+.fi
+.RE
+
+
+.PP
+.SH LIMITATIONS
+.PP
+See user-union(1) for details.
+In practice, this program captures many changes invoked by a
+"make install" that doesn't use DESTDIR, because it interposes common
+operations such as open() and fopen().
+
+
+.PP
+.SH AUTHOR
+David A. Wheeler
+.PP
+
+.PP
+.SH "REPORTING BUGS"
+Report bugs to <dwheeler, at, dwheeler dot com>
+See
+http://www.dwheeler.com/user-union 
+for more information.
+
+.PP
+.SH COPYRIGHT
+(C) 2011 David A. Wheeler.
+User-union (the software and its documentation) are
+released under the MIT license.
+.br
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+.PP
+.SH "SEE ALSO"
+user-union(1), run-redir(1), make-redir(1), fakeroot(1).
+
+
