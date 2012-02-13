@@ -10,7 +10,17 @@ It was created by David A. Wheeler.
 
 === How to Install ===
 
-To build:
+If you got this from a downloaded "tarball", just unpack it, e.g.:
+   tar xfzf user-union-0.12.tar.gz
+If you're using a version straight from the git repository,
+you need to use "autoconf" and friends to set it up (don't do this
+if you got it from the tarball, it's unnecessary, and some people's
+"autoconf" setup is too old):
+   autoreconf -i
+
+To configure and build:
+ cd user-union*
+ ./configure
  make
 
 To test:
@@ -21,6 +31,10 @@ To test:
 
 To install those results:
  make [DESTDIR=...] install
+
+
+The configuration is implemented with the GNU autotools suite
+(autoconf, etc.), so all the usual options are available.
 
 It's only been tested on GNU/Linux.
 However, it should work on other Unix-likes, including
