@@ -21,11 +21,11 @@ dist_check_DATA = expected
 dist_man_MANS = run-redir-union.1  user-union.1
 
 check: all
-	./runtest
+	$(srcdir)/runtest "$(srcdir)"
 
 accept:
 	@echo "Test results accepted"
-	./runtest -a
+	"$(srcdir)/runtest" -a
 
 
 # TODO:

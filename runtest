@@ -14,7 +14,6 @@ newline="${newline%X}"
 startdir="$(pwd)"
 overlay="/tmp/redir"
 underlay="/"
-expected="./expected"
 
 PATH="$startdir:$PATH"
 
@@ -29,15 +28,27 @@ reporter() {
   find .  -exec "$startdir"/fso_stat {} + | sort
 }
 
+# Are we *accepting* the results?
+if [ "$1" = "" ] ; then
+  echo "Need a parameter"
+  exit 1
+fi
+
+if [ "$1" = "-a" ] ; then
+  accept=true
+  shift
+fi
+
+srcdir="$1"
+expected="$1/expected"
+
 if [ ! -d "$expected" ]
 then
   echo "Can't find expected results directory $expected"
   exit 1
 fi
 
-# Are we *accepting* the results?
-if [ "$1" = "-a" ]
-then
+if [ "$accept" = "true" ] ; then
   if [ ! -d "$overlay" ]
   then
     echo "Can't find overlay directory $overlay"
@@ -47,6 +58,7 @@ then
   rsync -a "$overlay/" "$expected/"
   exit 0
 fi
+
 
 rm -fr "$overlay"
 mkdir "$overlay" || ( echo "Failed to create $overlay" ; exit 1 )
@@ -76,11 +88,11 @@ echo
 echo "Tests done.  Comparing to find differences with the expected results:"
 
 
-(cd "$overlay" ; reporter ) > .overlay_results
-(cd "$expected" ; reporter ) > .expected_results
+(cd "$overlay" ; reporter ) > "$(srcdir)/.overlay_results"
+(cd "$expected" ; reporter ) > "$(srcdir)/.expected_results"
 
 
-if diff -u .expected_results .overlay_results
+if diff -u "$(srcdir)/expected_results" "$(srcdir)/overlay_results"
 then
   # TODO: Compare the permissions
   echo "No differences. All tests passed!"
