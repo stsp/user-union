@@ -1,0 +1,5 @@
+#!/bin/sh
+
+USER_UNION_SO="$(pwd)/.libs/libuser-union-0.12.so" \
+ ./user-union -a /tmp/overlay /tmp/underlay  touch /tmp/underlay/whack
+

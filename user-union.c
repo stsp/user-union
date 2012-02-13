@@ -124,6 +124,8 @@
 #define _ATFILE_SOURCE 1
 
 
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -134,13 +136,19 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <stdarg.h>
-#include <dlfcn.h>
 #include <assert.h>
 #include <utime.h>
 #include <sys/time.h>
 // For opendir():
 #include <dirent.h>
 #include <assert.h>
+
+// For dlsym
+#if HAVE_DLFCN_H
+#include <dlfcn.h>
+#else
+#include <ltdl.h>
+#endif
 
 // We use pthread.h for a simple mutex lock (we don't create threads).
 // This lock (see below) is used to ensure we initialize correctly.

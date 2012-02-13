@@ -130,9 +130,10 @@ fi
 
 # What should we add to LD_PRELOAD (if it's not already there)?
 if [ -z "$USER_UNION_SO" ] ; then
- MY_USER_UNION_SO="user-union.so"
+ # TODO: This name should be updated automagically.
+ MY_USER_UNION_SO="libuser-union-0.12.so"
  if [ "$TESTMODE" = "y" ] ; then
-   MY_USER_UNION_SO="$(pwd)/$MY_USER_UNION_SO"
+   MY_USER_UNION_SO="$(pwd)/.libs/$MY_USER_UNION_SO"
  fi
 else
  MY_USER_UNION_SO="$USER_UNION_SO"
