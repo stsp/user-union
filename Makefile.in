@@ -1,6 +1,6 @@
 # Makefile for:
 NAME=user-union
-VERSION=0.11
+VERSION=0.12
 
 # This makefile generally follows the GNU coding standards
 # ("info standards") release process.

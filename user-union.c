@@ -25,8 +25,8 @@
 // THE SOFTWARE.
 //
 //
-// If you have root privileges, DON'T use this tool, because with root
-// privileges there are WAY better ways to do union mounts.  This includes
+// If you have root privileges there are WAY better ways to do union mounts
+// than this library.  This includes
 // FUSE-based approaches and kernel-implemented union mounts.
 // Implementations of such things include unionfs and aufs.
 // An LD_PRELOAD mechanism *always* has serious weaknesses, e.g., it can't
