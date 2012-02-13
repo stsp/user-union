@@ -18,8 +18,11 @@ dist_check_SCRIPTS = runtest testscript quicktest
 
 dist_check_DATA = expected
 
-dist_man_MANS = run-redir-union.1  user-union.1
+TESTS = $(check_SCRIPTS)
 
+CLEANFILES = .overlay_results .expected_results
+
+# $(srcdir)/runtest
 check: all
 	$(srcdir)/runtest "$(srcdir)"
 
@@ -27,12 +30,20 @@ accept:
 	@echo "Test results accepted"
 	"$(srcdir)/runtest" -a
 
+dist_man_MANS = run-redir-union.1  user-union.1
+
+# Override automake's setting for am__tar, so that symlinks in the
+# "expected" directory will be captured.  Do this by removing "-h" from:
+# am__tar = ${AMTAR} chof - "$$tardir"
+am__tar = ${AMTAR} cof - "$$tardir"
+
 
 # TODO:
 # - script needs to load library (.so) - currently quicktest hacks this in.
 # - "make check" works by itself, but not in "make distcheck".
 # - Fix pdf generation (for the man pages).
 # - Switch to AM_MAINTAINER_MODE and explain why, implications.
+# - Do something other than am__tar override (might fail in future automakes)
 
 # Don't need to install header files, we're overriding existing functions.
 
