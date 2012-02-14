@@ -16,20 +16,20 @@ endif
 
 dist_check_SCRIPTS = runtest testscript quicktest
 
-dist_check_DATA = expected
+dist_check_DATA = expected_results
 
-# Can't set TESTS= because we "runtest" needs an argument.
-# TESTS = $(dist_check_SCRIPTS)
+# Can't set TESTS= because "runtest" needs an argument.
 
-CLEANFILES = .overlay_results .expected_results
+CLEANFILES = overlay_results overlay/
 
 # Remember: In commands, prefix source files with "$(srcdir)" for VPATH builds
 check: all
 	"$(srcdir)/runtest" "$(srcdir)"
 
 accept:
+	test -f overlay_results || exit 1
 	@echo "Test results accepted"
-	"$(srcdir)/runtest" -a
+	cp -p overlay_results $(srcdir)/expected_results
 
 dist_man_MANS = run-redir-union.1  user-union.1
 
