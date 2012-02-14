@@ -6,7 +6,10 @@ dist_bin_SCRIPTS = run-redir-union user-union
 
 lib_LTLIBRARIES = libuser-union-0.12.la
 
+
 libuser_union_0_12_la_SOURCES = user-union.c
+
+libuser_union_0_12_la_LDFLAGS = -no-undefined
 
 # Only include if using library "dl".
 # We're using new automake, so use _LIBADD, not _LDADD.
