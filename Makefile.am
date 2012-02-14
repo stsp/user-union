@@ -1,12 +1,12 @@
+# Makefile.am for user-union
+
+ACLOCAL_AMFLAGS = -I m4 
 
 dist_bin_SCRIPTS = run-redir-union user-union
-
 
 lib_LTLIBRARIES = libuser-union-0.12.la
 
 libuser_union_0_12_la_SOURCES = user-union.c
-
-ACLOCAL_AMFLAGS = -I m4 
 
 # Only include if using library "dl".
 # We're using new automake, so use _LIBADD, not _LDADD.
@@ -18,13 +18,14 @@ dist_check_SCRIPTS = runtest testscript quicktest
 
 dist_check_DATA = expected
 
-TESTS = $(check_SCRIPTS)
+# Can't set TESTS= because we "runtest" needs an argument.
+# TESTS = $(dist_check_SCRIPTS)
 
 CLEANFILES = .overlay_results .expected_results
 
-# $(srcdir)/runtest
+# Remember: In commands, prefix source files with "$(srcdir)" for VPATH builds
 check: all
-	$(srcdir)/runtest "$(srcdir)"
+	"$(srcdir)/runtest" "$(srcdir)"
 
 accept:
 	@echo "Test results accepted"
