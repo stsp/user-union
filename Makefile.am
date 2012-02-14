@@ -33,12 +33,6 @@ accept:
 
 dist_man_MANS = run-redir-union.1  user-union.1
 
-# Override automake's setting for am__tar, so that symlinks in the
-# "expected" directory will be captured.  Do this by removing "-h" from:
-# am__tar = ${AMTAR} chof - "$$tardir"
-am__tar = ${AMTAR} cof - "$$tardir"
-
-
 # TODO:
 # - script needs to load library (.so) - currently quicktest hacks this in.
 # - "make check" works by itself, but not in "make distcheck".
