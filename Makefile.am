@@ -15,6 +15,7 @@ libuser_union_0_12_la_LIBADD = -ldl
 endif
 
 dist_bin_SCRIPTS = run-redir-union user-union
+EXTRA_DIST = user-union.txt
 
 # We build user-union in the makefile, instead of having a "user-union.in"
 # read by configure, so that "make build" can override prefix, libdir, etc.
@@ -23,13 +24,18 @@ user-union: user-union.txt $(my_library_la_name)
 	$(SED) -e 's!# YOU MAY EDIT.*!# DO NOT EDIT - GENERATED FILE!' \
           -e 's!^\(my_library_la_name\)=\(.*\)!\1="$(my_library_la_name)"!' \
           -e 's!^\(libdir\)=.*!\1="$(libdir)"!' \
-          < user-union.txt > user-union
+          < $(srcdir)/user-union.txt > user-union
 	chmod a-w user-union
 	chmod a+rx user-union
 
 dist_check_SCRIPTS = runtest testscript quicktest
 dist_check_DATA = expected_results
-CLEANFILES = overlay_results overlay/
+CLEANFILES = overlay_results user-union
+# "CLEANFILES" can't rm directories, so use this hack to work around it:
+clean-local: clean-local-check
+.PHONY: clean-local-check
+clean-local-check:
+	-rm -rf overlay/
 # Can't set TESTS= because "runtest" needs an argument.
 
 # Remember: In commands, prefix source files with "$(srcdir)" for VPATH builds

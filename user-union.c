@@ -171,8 +171,7 @@
 // We're doing a lot of subterfugue, so symbol visibility needs to be
 // reduced to *only* the symbols we are intentionally overriding.
 
-
-#define DEBUG 1
+// #define DEBUG 1
 #ifdef DEBUG
 #define debug(...) fprintf(stderr, "user-union: " __VA_ARGS__)
 #else

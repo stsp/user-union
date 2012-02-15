@@ -198,8 +198,7 @@ if [ $NOOP = "y" ] ; then
  exit 0
 fi
 
-
-echo "DEBUG: LD_PRELOAD will become: ${MY_LD_PRELOAD}"
+# echo "DEBUG: LD_PRELOAD will become: ${MY_LD_PRELOAD}"
 
 # Run the command, with LD_PRELOAD and USER_UNION set to do the union.
 # We only set LD_PRELOAD and USER_UNION as the very last operations
