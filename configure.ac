@@ -11,8 +11,8 @@ AC_CONFIG_MACRO_DIR([m4])
 # Bring in automake and libtool.
 AM_INIT_AUTOMAKE([-Wall -Werror])
 # Disable static, since they're pointless in our case, and try to make
-# relocatable so that it can override anything:
-LT_INIT([disable-static pic-only])
+# relocatable so that it can override anything (should we use pic-only?):
+LT_INIT([disable-static])
 
 # Checks for programs.
 AC_PROG_CC

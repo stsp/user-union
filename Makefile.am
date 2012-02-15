@@ -2,13 +2,10 @@
 
 ACLOCAL_AMFLAGS = -I m4 
 
-dist_bin_SCRIPTS = run-redir-union user-union
-
-lib_LTLIBRARIES = libuser-union-0.12.la
-
-
+my_library_la_name = libuser-union-0.12.la
+lib_LTLIBRARIES = $(my_library_la_name)
 libuser_union_0_12_la_SOURCES = user-union.c
-
+# Cygwin and others require this option to build shared libraries:
 libuser_union_0_12_la_LDFLAGS = -no-undefined
 
 # Only include if using library "dl".
@@ -17,13 +14,23 @@ if BUILD_WITH_LIBDL
 libuser_union_0_12_la_LIBADD = -ldl
 endif
 
+dist_bin_SCRIPTS = run-redir-union user-union
+
+# We build user-union in the makefile, instead of having a "user-union.in"
+# read by configure, so that "make build" can override prefix, libdir, etc.
+user-union: user-union.txt $(my_library_la_name)
+	rm -f user-union
+	$(SED) -e 's!# YOU MAY EDIT.*!# DO NOT EDIT - GENERATED FILE!' \
+          -e 's!^\(my_library_la_name\)=\(.*\)!\1="$(my_library_la_name)"!' \
+          -e 's!^\(libdir\)=.*!\1="$(libdir)"!' \
+          < user-union.txt > user-union
+	chmod a-w user-union
+	chmod a+rx user-union
+
 dist_check_SCRIPTS = runtest testscript quicktest
-
 dist_check_DATA = expected_results
-
-# Can't set TESTS= because "runtest" needs an argument.
-
 CLEANFILES = overlay_results overlay/
+# Can't set TESTS= because "runtest" needs an argument.
 
 # Remember: In commands, prefix source files with "$(srcdir)" for VPATH builds
 check: all
@@ -42,6 +49,8 @@ dist_man_MANS = run-redir-union.1  user-union.1
 # - Fix pdf generation (for the man pages).
 # - Switch to AM_MAINTAINER_MODE and explain why, implications.
 # - Do something other than am__tar override (might fail in future automakes)
+# - Support values other than LD_PRELOAD, e.g., DYLD_INSERT_LIBRARIES
+#    http://www.fortran-2000.com/ArnaudRecipes/sharedlib.html
 
 # Don't need to install header files, we're overriding existing functions.
 
@@ -50,3 +59,18 @@ dist_man_MANS = run-redir-union.1  user-union.1
 # because it's not clear what would really mean in this context.
 
 # No .pc.in file.
+
+
+# Cygwin LD_PRELOAD not working, and docs say it WILL work
+#   (though may require : as separator)
+# http://cygwin.com/cygwin-ug-net/dll.html
+# Suggests:
+# gcc -shared -o cyg${module}.dll \
+#     -Wl,--out-implib=lib${module}.dll.a \
+#     -Wl,--export-all-symbols \
+#     -Wl,--enable-auto-import \
+#     -Wl,--whole-archive ${old_libs} \
+#     -Wl,--no-whole-archive ${dependency_libs}
+# The name of your library is ${module}, prefixed with cyg for the DLL and lib for the import library. Cygwin DLLs use the cyg prefix to differentiate them from native-Windows MinGW DLLs, see the MinGW website for more details. ${old_libs} are all your object files, bundled together in static libs or single object files and the ${dependency_libs} are import libs you need to link against, e.g '-lpng -lz -L/usr/local/special -lmyspeciallib'.
+
+

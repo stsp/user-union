@@ -1,19 +1,19 @@
 #!/bin/sh
 
-# User-space union mount, implemented using LD_PRELOAD.
 # user-union [options] [[--] command]
-#
-# The environment variable USER_UNION_SO, if set, is the
-# name of the .so library to be run.
-# Otherwise, 'user-union.so' is used (in the current directory if -t is set).
-# If it can't load the shared library, you will see error messages like:
-# ERROR: ld.so: object 'user-union.so' from LD_PRELOAD cannot be preloaded: ignored.
-#
+# This performs a user-space union mount, implemented using LD_PRELOAD.
+
+# YOU MAY EDIT THIS FILE
+
 # When accessing a particular directory, the longest-matching directory name
 # is used; if it matches more than one, the first one is used.
 #
 # If no command is given, the $SHELL is executed.
 
+
+# These are configured by "make" during building.
+my_library_la_name=XYZ
+libdir=XYZ
 
 # Remove 'space' from IFS, so filenames with spaces work well.
 IFS="$(printf '\n\t')"
@@ -128,30 +128,43 @@ if [ -n "$USER_UNION" ] ; then
   MY_USER_UNION="$MY_USER_UNION${newline}$USER_UNION"
 fi
 
-# What should we add to LD_PRELOAD (if it's not already there)?
-if [ -z "$USER_UNION_SO" ] ; then
- # TODO: This name should be updated automagically.
- MY_USER_UNION_SO="libuser-union-0.12.so"
- if [ "$TESTMODE" = "y" ] ; then
-   MY_USER_UNION_SO="$(pwd)/.libs/$MY_USER_UNION_SO"
- fi
+
+# Find where library "la" file is
+if [ "$TESTMODE" = "n" ] ; then
+  full_la_filename="${libdir}/${my_library_la_name}"
 else
- MY_USER_UNION_SO="$USER_UNION_SO"
+  full_la_filename="$(pwd)/${my_library_la_name}"
+fi
+if ! [ -f "$full_la_filename" ] ; then
+  echo "FAILURE: Could not find $full_la_filename" >&2
+  exit 1
+fi
+
+# Find shared object name (.so, .dll, or whatever) from "la" file
+MY_USER_UNION_SO="$(grep '^dlname=' "$full_la_filename")"
+MY_USER_UNION_SO="${MY_USER_UNION_SO#*=}"
+MY_USER_UNION_SO="${MY_USER_UNION_SO#\'}"
+MY_USER_UNION_SO="${MY_USER_UNION_SO%\'}"
+
+if [ "$TESTMODE" = "n" ] ; then
+  MY_USER_UNION_SO="${libdir}/${MY_USER_UNION_SO}"
+else
+  MY_USER_UNION_SO="$(pwd)/.libs/${MY_USER_UNION_SO}"
 fi
 
 # Sanity check of USER_UNION_SO
-case "$USER_UNION_SO" in
- (*/*)  # Contains a slash
-   case "$USER_UNION_SO" in
-     (/*)  ;;
-     (*)
-         echo "FAIL.  Library name has slash but doesn't begin with one." >&2
-         echo "USER_UNION_SO set to $USER_UNION_SO" >&2
-         exit 1
-         ;;
-   esac
- ;;
-esac
+# case "$USER_UNION_SO" in
+#  (*/*)  # Contains a slash
+#    case "$USER_UNION_SO" in
+#      (/*)  ;;
+#      (*)
+#          echo "FAIL.  Library name has slash but doesn't begin with one." >&2
+#          echo "USER_UNION_SO set to $USER_UNION_SO" >&2
+#          exit 1
+#          ;;
+#    esac
+#  ;;
+# esac
 
 # Figure out what LD_PRELOAD should become.  Don't add to LD_PRELOAD
 # if it's already there, so that user-union can be (mostly) nestable.
@@ -184,6 +197,9 @@ if [ $NOOP = "y" ] ; then
  echo
  exit 0
 fi
+
+
+echo "DEBUG: LD_PRELOAD will become: ${MY_LD_PRELOAD}"
 
 # Run the command, with LD_PRELOAD and USER_UNION set to do the union.
 # We only set LD_PRELOAD and USER_UNION as the very last operations
