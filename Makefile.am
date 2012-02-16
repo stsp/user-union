@@ -15,6 +15,7 @@ libuser_union_0_12_la_LIBADD = -ldl
 endif
 
 dist_bin_SCRIPTS = run-redir-union user-union
+CLEANFILES = user-union
 EXTRA_DIST = user-union.txt m4/NOTES
 
 # We build user-union in the makefile, instead of having a "user-union.in"
@@ -30,7 +31,7 @@ user-union: user-union.txt $(my_library_la_name)
 
 dist_check_SCRIPTS = runtest testscript quicktest
 dist_check_DATA = expected_results
-CLEANFILES = overlay_results user-union
+CLEANFILES += overlay_results user-union
 # "CLEANFILES" can't rm directories, so use this hack to work around it:
 clean-local: clean-local-check
 .PHONY: clean-local-check
