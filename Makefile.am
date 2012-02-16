@@ -1,6 +1,6 @@
 # Makefile.am for user-union
 
-ACLOCAL_AMFLAGS = -I m4 
+ACLOCAL_AMFLAGS = -I m4 --install
 
 my_library_la_name = libuser-union-0.12.la
 lib_LTLIBRARIES = $(my_library_la_name)
@@ -15,7 +15,7 @@ libuser_union_0_12_la_LIBADD = -ldl
 endif
 
 dist_bin_SCRIPTS = run-redir-union user-union
-EXTRA_DIST = user-union.txt
+EXTRA_DIST = user-union.txt m4/NOTES
 
 # We build user-union in the makefile, instead of having a "user-union.in"
 # read by configure, so that "make build" can override prefix, libdir, etc.
