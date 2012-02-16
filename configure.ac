@@ -9,9 +9,10 @@ AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 
 # Bring in automake and libtool.
-AM_INIT_AUTOMAKE([-Wall -Werror])
+AM_INIT_AUTOMAKE([1.11 -Wall -Werror])
 # Disable static, since they're pointless in our case, and try to make
 # relocatable so that it can override anything (should we use pic-only?):
+LT_PREREQ([2.4])
 LT_INIT([disable-static])
 
 # Checks for programs.
