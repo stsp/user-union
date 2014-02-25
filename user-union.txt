@@ -175,8 +175,8 @@ elif ! printf "%s" "$LD_PRELOAD" | grep -Fq "${MY_USER_UNION_SO}" ; then
  # If it has a space at the beginning or end, add the library there.
  # Else, add it to a "convenient side" (whichever fakeroot likes better).
  case "$LD_PRELOAD" in
-  ( *) MY_LD_PRELOAD="${MY_USER_UNION_SO}${LD_PRELOAD}" ;;
-  (* ) MY_LD_PRELOAD="${LD_PRELOAD}${MY_USER_UNION_SO}" ;;
+  (" "*) MY_LD_PRELOAD="${MY_USER_UNION_SO}${LD_PRELOAD}" ;;
+  (*" ") MY_LD_PRELOAD="${LD_PRELOAD}${MY_USER_UNION_SO}" ;;
   (*)  MY_LD_PRELOAD="${LD_PRELOAD} ${MY_USER_UNION_SO}" ;;
  esac
 fi
