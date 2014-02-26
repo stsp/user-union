@@ -1336,7 +1336,7 @@ WRAP(int, mkfifo, mkfifo, (const char* path, mode_t mode), \
 //        (fd, buffer, buflen), READ,)
 
 
-#if defined(__linux__)
+#if defined(__linux__) && !defined(__UCLIBC__)
 
 // Special stuff to handle GNU C library.
 // Technically, that's not the same as __linux__.
