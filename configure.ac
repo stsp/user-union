@@ -13,6 +13,7 @@ AM_INIT_AUTOMAKE([1.11 -Wall -Werror])
 # Disable static, since they're pointless in our case, and try to make
 # relocatable so that it can override anything (should we use pic-only?):
 LT_PREREQ([2.4])
+AM_PROG_AR
 LT_INIT([disable-static])
 
 # Checks for programs.
