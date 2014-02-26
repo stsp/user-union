@@ -917,7 +917,7 @@ static char *redir_name(const char *pathname, int use) {
     // whether it exists or not.  This is different from PREFER_UNDERLAY,
     // which only returns the underlay name if it exists.
     debug("OPENDIR!\n");
-    char *new_directory;
+    // char *new_directory;
     //
     // new_directory = mkdir_new(???);
     // create_files(new_directory, underlay_name);
