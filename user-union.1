@@ -193,6 +193,8 @@ execl(), execlp, execle(), and getcwd(),
 some *at functions,
 and the new open by handle system calls of Linux
 like open_by_handle_at (see https://lwn.net/Articles/432757/ ).
+Most systems have a few "hidden" functions that are not immediately
+obvious yet should be overridden as well.
 Anyone who wants to help should look at the list of functions in the
 C library (including system calls) that take function parameters, but
 aren't yet wrapped.
@@ -242,17 +244,21 @@ important information to be revealed.
 *
 The C library's internal calls often cannot be overridden, depending
 on the specific implementation.
+C libraries are themselves implemented by calling various other functions,
+but depending on various circumstances these
+interal calls may directly invoke various lower-level functions
+instead of allowing these functions to be redirected.
 In particular, the GNU C library's default installation makes it
-impossible to redirect "internal" calls inside the GNU C library.
-The user-union package compensates for this by overriding many
+impossible to redirect "internal" calls that are inside the GNU C library.
+The user-union package tries to compensate by overriding many
 additional functions, e.g., it overrides fopen() as well as open().
-Nevertheless, such systems the
-"union mount" abstraction is especially leaky.
-On the GNU C library could resolve this by
+Nevertheless, on systems where the C library's internal calls cannot be
+overridden the "union mount" abstraction is especially leaky.
+GNU C library users can resolve this by
 recompiling the GNU C library to enable redirection (using the
-"--disable-hidden-plt" option) and use it.
+"--disable-hidden-plt" option) and then using that version of the C library.
 For many users, recompiling their
-C library just to do this is not a practical solution.
+C library just to do this kind of redirection is not a practical solution.
 Even if your C library allows redirections of its internal functions
 (e.g., you compiled the GNU C library with "--disable-hidden-plt"),
 this kind of tool will always be a leaky abstraction.
@@ -260,10 +266,11 @@ this kind of tool will always be a leaky abstraction.
 *
 There is the possibility that a change in the underlying C
 library will end up causing serious problems in this library.
-The fakeroot implementation had this problem and gave up.
+The fakeroot implementation had this problem and gave up this approach.
 The author is aware of these issues, and has decided to do this anyway :-).
 In particular, user-union implements an "override prefix"
-and has been written in a way to resist this kind of problem.
+and has been written in a way to resist this kind of problem,
+which greatly reduces the impact of this potential problem.
 .TP
 *
 Changing environment variables used by user-union could interfere with it.
