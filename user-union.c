@@ -315,7 +315,7 @@ static usage_t use_open(int flags) {
 //
 // Rationale:
 // We intercept many functions and then call down to the C library.
-// It's possible that when the the C library implements those functions,
+// It's possible that when the C library implements those functions,
 // it could call other functions that we *also* intercept.
 // For example, we may override fopen(), but when we call down to the
 // C library fopen(), it will invoke open() which might end up
