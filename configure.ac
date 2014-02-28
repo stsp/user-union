@@ -13,7 +13,13 @@ AM_INIT_AUTOMAKE([1.11 -Wall -Werror])
 # Disable static, since they're pointless in our case, and try to make
 # relocatable so that it can override anything (should we use pic-only?):
 LT_PREREQ([2.4])
-AM_PROG_AR
+# Invoke AM_PROG_AR if it's defined.
+# On some systems, failing to include this triggers an automake warning
+# that (because of -Werror) leads to build failure.
+# Other systems don't have this macro.  So we'll handle it all.
+m4_ifdef([AM_PROG_AR], [AM_PROG_AR],
+ [AC_MSG_CHECKING([["Detecting automake macro AM_PROG_AR"]])
+ AC_MSG_RESULT(["no"])])
 LT_INIT([disable-static])
 
 # Checks for programs.
