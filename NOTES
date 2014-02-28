@@ -1,4 +1,78 @@
-Notes on user-union
+# Notes on user-union #
+
+Here are various notes, including notes on potential future directions,
+Cygwin, pointers to literature on union mounts, and pointers to literature
+on LD_PRELOAD and wrapping.
+
+## Potential future directions ##
+
+It would be possible to enable much more flexible overrides,
+so that a given directory would be redirected (no matter what)
+to some other directory.  E.G., so that a reference to "/"
+would try to write and prioritize reads from /tmp/overlay, and
+then only look at /mnt/underlay, skipping the contents of "/" entirely.
+This wouldn't even take that much code.
+
+The key function that needs modification is redir_name.
+This is the function that takes a pathname and returns
+a pointer to a redirected pathname, depending on how it's used.
+In particular, it would need to modify the part of it that
+examines branch information to find the best match.
+Obviously the data structure that stores
+branch information, and the routine that reads in the branch information,
+need modification as well.
+
+As for what to change it *to*, the current data structures
+are not adequate, but it wouldn't be hard to change them.
+The key is that the environment variable USER_UNION's format needs to change.
+I suggest this data structure
+(which presumes that directories won't have tabs or newlines):
+* USER_UNION contains a list of newline-separated branches
+* A branch has the form "MATCH {tab LAYER}*".
+The "match" is the requesting program's "original" directory name.
+The tab-separated list of layers is the list of directories that
+will be consulted instead, in order. The *first* layer is special and
+called the "overlay"; it's always checked first, and writes go THERE.
+The rest of the layers are called "underlays".
+It might be useful to support a layer name "-"
+as "no layer", so that you can hide or make unwriteable certain regions.
+
+Now if you want to make the entire file tree starting at "/"
+get redirected to "/tmp/overlay" as the writable overlay, and /mnt/underlay
+as the underlay, you could use this in the environment variable USER_UNION:
+/ TAB /tmp/overlay TAB /mnt/underlay
+
+The current implementation wraps
+dlopen, execve, execv, and execvp, but as documented
+in the code, it doesn't try all that hard to do it exactly.
+Also, it does not wrap execl, execlp, and execle and all.
+This is not fundamental to the approach, it's just that to 
+properly implement most of these it must re-implement
+searching an environment variable in certain cases
+(PATH in most, LD_LIBRARY_PATH in the case of dlopen).
+
+A workaround, until those lookup limitations are corrected, is to modify
+PATH (or LD_LIBRARY_PATH) to change every directory entry into the
+"final expected path" and prepend the override prefix. That
+prefix is currently:
+   "/./.././."
+E.G., if your PATH was originally /usr/bin,
+but you really want to load /tmp/bin,
+change that PATH entry to "/./../././tmp/bin".  The override prefix lets
+user-union know that this directory entry has ALREADY been translated and
+just pass it through.  This mechanism is used internally by user-union
+to prevent translation loops that would otherwise be caused by the C runtime.
+
+## Cygwin ##
+
+Currently Cygwin isn't working, but Cygwin is *supposed* to work:
+http://cygwin.com/ml/cygwin/2007-08/msg00070.html
+
+There's probably some small incompatibility that needs tracking down.
+The following documentation should help:
+http://cygwin.com/cygwin-ug-net/dll.html
+
+## Union mount literature ##
 
 There's lots of literature about union mounts.  For a survey, see:
 * "Unioning file systems: Architecture, features, and design choices"
@@ -11,6 +85,7 @@ by Valerie Aurora and its successors:
 by Jan-Simon Pendry and Marshall Kirk McKusick
 http://www.usenix.org/publications/library/proceedings/neworl/full_papers/mckusick.a
 
+## Wrapper / LD_PRELOAD documentation ##
 
 Using LD_PRELOAD and overriding library calls could use better documentation.
 Some info is at:
@@ -34,7 +109,5 @@ in particular I liked their approach to using C macros, and they
 had some notes on Apple OS X and the *BSDs.
 I used some of their macro approach and naming convention, but ended
 up writing my own code to do it.
-
-
 
 
