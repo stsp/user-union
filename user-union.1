@@ -1,5 +1,5 @@
 .\" 
-.TH USER-UNION "1" "February 2011" "user-union" "User Commands"
+.TH USER-UNION "1" "February 2014" "user-union" "User Commands"
 .SH NAME
 user-union \- User-space union mount, implemented using LD_PRELOAD.
 .SH SYNOPSIS
@@ -112,13 +112,15 @@ no other commands determining what to overlay; see the description.
 .PP
 .SH "IMPLEMENTATION APPROACH"
 .PP
-This tool is implemented using LD_PRELOAD, which has various implications.
-For example, any privileged program (like su) will \fInot\fR
-be redirected.
+This tool redirects the filenames used by various low-level library calls
+by using the LD_PRELOAD environment.
+This has various implications.
+In particular, any privileged (setuid/setgid) program, like su,
+will \fInot\fR be redirected.
 
 .PP
-This tool can be combined with other libraries that use LD_PRELOAD, though
-whether or not this works depends on the other libraries.
+This tool \fIcan\fR be combined with other libraries that use LD_PRELOAD,
+though whether or not this works depends on the other libraries.
 The user-union tool must modify LD_PRELOAD to work; it will add the
 user-union shared library to the beginning or end of the LD_PRELOAD
 if a space is on that side, if you need to force its location.
@@ -136,10 +138,24 @@ Otherwise, 'user-union.so' is used (in the current directory if -t is set).
 If it can't load the shared library, you will see error messages like:
 ERROR: ld.so: object 'user-union.so' from LD_PRELOAD cannot be preloaded: ignored.
 .PP
-The underlay directory has a hidden directory ".user-union" created, and
+The overlay directory has a hidden directory ".user-union" created, and
 this directory is silently added to as an "ignore" (aka non-union) branch.
 This hidden directory is used to store housekeeping information and
 temporary data.
+
+.PP
+This tool is designed to be immune to endless redirection loops.
+Historically similar tools (like fakeroot) have abandoned the approach
+used by this tool,
+because low-level changes in the underlying C library could
+cause redirections to be stuck in an endless redirecting loop.
+In such a loop the redirecting tool endlessly calls itself.
+In contrast, user-union
+has been written in a way to resist this kind of problem.
+In particular, any redirected filenames is prepended internally
+with a special "override prefix".
+Filenames that begin with the override prefix are not redirected further,
+essentially eliminating endless redirection loops.
 
 .PP
 .SH EXAMPLES
@@ -264,15 +280,6 @@ Even if your C library allows redirections of its internal functions
 this kind of tool will always be a leaky abstraction.
 .TP
 *
-There is the possibility that a change in the underlying C
-library will end up causing serious problems in this library.
-The fakeroot implementation had this problem and gave up this approach.
-The author is aware of these issues, and has decided to do this anyway :-).
-In particular, user-union implements an "override prefix"
-and has been written in a way to resist this kind of problem,
-which greatly reduces the impact of this potential problem.
-.TP
-*
 Changing environment variables used by user-union could interfere with it.
 In particular, changing LD_PRELOAD in a way that removes the shared object
 user-union.so will disable user-union.
@@ -335,7 +342,7 @@ for more information.
 
 .PP
 .SH COPYRIGHT
-(C) 2011 David A. Wheeler.
+(C) 2011-2014 David A. Wheeler.
 User-union (the software and its documentation) are
 released under the MIT license.
 .br
