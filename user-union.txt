@@ -32,6 +32,8 @@ DEFAULT_NONUNION="/tmp${newline}/var/tmp${newline}/home${newline}/Users"
 MY_USER_UNION=""
 TESTMODE=n
 NOOP=n
+# FIXME: Put this value in one place in the source code
+OVERRIDE_PREFIX_VALUE="/./.././."
 
 add_pair() {
   # $1 is the overlay, $2 is the underlay
@@ -77,6 +79,10 @@ Where options are:
   -u UN     Set  the  default underlay directory to UN which is used when
             there are no other commands determining what to overlay;  see
             the description.
+  -P        Report the override prefix on a line and return.
+            The override prefix disables user-union redirection for this name.
+            Prepend the override prefix to an absolute pathname to
+            refer to the actual pathname without redirection.
 USAGE
 exit 0
 }
@@ -107,6 +113,9 @@ while [ $# -gt 0 ] ; do
     -o) shift ; OVERLAY_DIRECTORY="$1" ; shift ;;
     -t) shift ; TESTMODE="y" ;;
     -u) shift ; UNDERLAY_DIRECTORY="$1" ; shift ;;
+    -P) shift
+        printf '%s\n' "$OVERRIDE_PREFIX_VALUE"
+        exit 0 ;;
     -h) shift ; usage ;;
     --help) shift ; usage ;;
     -\?) shift ; usage ;;

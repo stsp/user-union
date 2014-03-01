@@ -108,6 +108,19 @@ instead of searching the usual library directories.
 Set the default underlay directory to \fIUN\fR which is used when there are
 no other commands determining what to overlay; see the description.
 
+.TP
+\fB-P\fR
+Report the override prefix on a line and return.
+The override prefix disables user-union redirection for this name.
+Thus, prepend the override prefix to an absolute pathname to
+refer to the actual pathname without redirection.
+For example, the following will refer to the actual file /bin/sh
+even when user-union is normally redirecting files:
+.nf
+    ls -l "$(./user-union -P)/bin/sh"
+.fi
+
+
 
 .PP
 .SH "IMPLEMENTATION APPROACH"
