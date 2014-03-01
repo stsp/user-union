@@ -44,6 +44,13 @@ export MALLOC_CHECK_=3
 # Run the main body of tests:
 ./user-union -t -a "$overlay" "$underlay" -i /home -i /tmp -i /var/tmp \
   "${srcdir}/testscript"
+if [ -f "$(user-union -P)/usr/bin/hello" ]
+then
+  echo "FAILURE: /usr/bin/hello was actually created!"
+  rm -f "$(user-union -P)/usr/bin/hello"
+  exit 1
+fi
+
 
 # Also do a simple test with run-redir-union, basically a smoke test
 # to make sure it can be run at all:
