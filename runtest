@@ -83,11 +83,13 @@ if diff -u "$srcdir/expected_results" "overlay_results"
 then
   # TODO: Compare the permissions
   echo "No differences. All tests passed!"
+  exit 0
 else
   echo "DIFFERENCES FOUND."
   echo "Leading + indicates items the overlay adds, beyond those expected."
   echo "Leading - indicates items the overlay removes from those expected."
   echo "Lines show filename, type, size, octal permissions, symlink, checksum."
   echo "If they're okay, run 'make accept'"
+  exit 1
 fi
 
