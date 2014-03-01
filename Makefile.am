@@ -52,8 +52,14 @@ dist_man_MANS = run-redir-union.1  user-union.1
 
 # Convenience target.  We don't require this for distribution,
 # so these tools aren't required to create a distribution.
+# FIXME: use .s1.s2 and .SUFFIXES
+my-pdf: user-union.pdf run-redir-union.pdf
+
 user-union.pdf: ./user-union.1
 	man -t ./user-union.1 | ps2pdf - user-union.pdf
+
+run-redir-union.pdf: ./run-redir-union.1
+	man -t ./run-redir-union.1 | ps2pdf - run-redir-union.pdf
 
 # TODO:
 # - script needs to load library (.so) - currently quicktest hacks this in.
