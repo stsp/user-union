@@ -50,6 +50,11 @@ accept:
 
 dist_man_MANS = run-redir-union.1  user-union.1
 
+# Convenience target.  We don't require this for distribution,
+# so these tools aren't required to create a distribution.
+user-union.pdf: ./user-union.1
+	man -t ./user-union.1 | ps2pdf - user-union.pdf
+
 # TODO:
 # - script needs to load library (.so) - currently quicktest hacks this in.
 # - "make check" works by itself, but not in "make distcheck".
