@@ -7,9 +7,7 @@
 ./usr/bin/hello2   f 6 09f7e02f1290be211da7
 ./usr/bin/hello3   f 6 09f7e02f1290be211da7
 ./usr/bin/hello   f 6 09f7e02f1290be211da7
-./usr/bin/mkdir_symlink2   f 10 -> /bin/mkdir f99331fa0a0a8d5d4db5
-./usr/bin/mkdir_symlink   s 5 -> mkdir
-./usr/bin/slink_usr_bin_hello   f 24 -> /tmp/redir/usr/bin/hello 09f7e02f1290be211da7
+./usr/bin/hello_symlink2   s 10 -> /bin/hello
 ./usr/bin/starterfile2   f 18 d9dd0f0228584b39798a
 ./usr/bin/wokka   s 6 -> /wokka
 ./usr   d 
