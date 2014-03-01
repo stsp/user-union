@@ -63,9 +63,6 @@ run-redir-union.pdf: ./run-redir-union.1
 
 # TODO:
 # - script needs to load library (.so) - currently quicktest hacks this in.
-# - "make check" works by itself, but not in "make distcheck".
-# - Fix pdf generation (for the man pages).
-# - Switch to AM_MAINTAINER_MODE and explain why, implications.
 # - Do something other than am__tar override (might fail in future automakes)
 # - Support values other than LD_PRELOAD, e.g., DYLD_INSERT_LIBRARIES
 #    http://www.fortran-2000.com/ArnaudRecipes/sharedlib.html
