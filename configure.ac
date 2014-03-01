@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.63])
-AC_INIT([user-union], [0.13], [dwheeler@dwheeler.com],
+AC_INIT([user-union], [0.14], [dwheeler@dwheeler.com],
         [user-union], [http://www.dwheeler.com/user-union])
 AC_CONFIG_SRCDIR([user-union.c])
 AC_CONFIG_HEADERS([config.h])
