@@ -1,25 +1,29 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-AC_PREREQ([2.68])
+AC_PREREQ([2.63])
 AC_INIT([user-union], [0.12], [dwheeler@dwheeler.com],
         [user-union], [http://www.dwheeler.com/user-union])
 AC_CONFIG_SRCDIR([user-union.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 
-# Bring in automake and libtool.
+# Bring in automake.
 AM_INIT_AUTOMAKE([1.11 -Wall -Werror])
+# The following invokes AM_PROG_AR, but only if it's defined.
+# On some systems, failing to invoke AM_PROG_AR triggers an
+# automake warning that, because of -Werror, leads to build failure.
+# However, other (older) automakes don't have this macro at all.
+# This approach handles all cases, and reports when the macro isn't defined.
+m4_ifdef([AM_PROG_AR], [AM_PROG_AR],
+ # Space out AM_PROG_AR so the suspicious pattern detector doesn't complain.
+ [AC_MSG_CHECKING([["Detecting automake macro AM _ PROG _ AR"]])
+ AC_MSG_RESULT(["no"])])
+
+# Bring in libtool.
+LT_PREREQ([2.2.6])
 # Disable static, since they're pointless in our case, and try to make
 # relocatable so that it can override anything (should we use pic-only?):
-LT_PREREQ([2.4])
-# Invoke AM_PROG_AR if it's defined.
-# On some systems, failing to include this triggers an automake warning
-# that (because of -Werror) leads to build failure.
-# Other systems don't have this macro.  So we'll handle it all.
-m4_ifdef([AM_PROG_AR], [AM_PROG_AR],
- [AC_MSG_CHECKING([["Detecting automake macro AM_PROG_AR"]])
- AC_MSG_RESULT(["no"])])
 LT_INIT([disable-static])
 
 # Checks for programs.
