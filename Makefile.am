@@ -43,6 +43,9 @@ clean-local-check:
 check: all
 	"$(srcdir)/runtest" "$(srcdir)"
 
+# Convenience function
+test: check
+
 accept:
 	test -f overlay_results || exit 1
 	@echo "Test results accepted"

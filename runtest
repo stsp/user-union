@@ -14,6 +14,8 @@ elif [ -z "$1" ] ; then
 fi
 
 srcdir="$1"
+# Default to parent
+: "${srcdir:=..}"
 
 # Remove 'space', so filenames with spaces work well.
 IFS="$(printf '\n\t')"
@@ -57,7 +59,7 @@ fi
 demo2="/tmp/demo2"
 rm -fr "$demo2" || die "Can't remove $demo2"
 mkdir -p "$demo2" || die "Can't create $demo2"
-DESTDIR="$demo2" ./run-redir-union -t ln -s /wokka /usr/bin
+DESTDIR="$demo2" "${srcdir}/run-redir-union" -t ln -s /wokka /usr/bin
 if [ -L "$demo2/usr/bin/wokka" ] && [ -d "$overlay/usr/bin" ] ; then
   mv "$demo2/usr/bin/wokka" "$overlay/usr/bin/wokka"
 else
@@ -70,14 +72,14 @@ echo "Tests done.  Comparing to find differences with the expected results:"
 
 # TODO: This currently requires GNU extensions (find -printf),
 # need an easy portable way to print data about files.
+my_fso_stat="$(realpath "${srcdir}/fso_stat")"
 reporter() {
-  find .  -exec fso_stat {} + | sort
+  find .  -exec "$my_fso_stat" {} + | sort
 }
-
 
 (cd "$overlay" ; reporter ) > "overlay_results"
 
-if diff -u "expected_results" "overlay_results"
+if diff -u "$srcdir/expected_results" "overlay_results"
 then
   # TODO: Compare the permissions
   echo "No differences. All tests passed!"
