@@ -1,3 +1,7 @@
+2014-03-01 David A. Wheeler <dwheeler, at, dwheeler.com>
+	* New "-P" option, so users can easily disable redirection for a
+	  specific file.
+
 2014-02-27 David A. Wheeler <dwheeler, at, dwheeler.com>
 	* Improvements in the man page documentation
 	* Eliminated some compiler warnings
@@ -6,6 +10,7 @@
 	* Enabled uclibc build (thanks to Stas Sergeev)
 	* Added AM_PROG_AR to configure.ac
 	  (without this, failed or wrong builds could result)
+
 2011-06-12 David A. Wheeler <dwheeler, at, dwheeler.com>
 	* Last-minute improvements for a first public release.
 	  - Tarball shouldn't include unnecessary files (e.g., .o/.so).
