@@ -1,6 +1,22 @@
 #!/bin/sh
 
+PATH="${PATH}:."
+
+if [ -f "$(user-union -P)/usr/bin/hello" ]
+then
+  echo "Error - there is a /usr/bin/hello file, that interferes with tests"
+  exit 1
+fi
+
 echo Hello > /usr/bin/hello
+
+# This particular disaster can happen on Cygwin - stop early.
+if [ -f "$(user-union -P)/usr/bin/hello" ]
+then
+  echo "FAILURE TO INVOKE user-union, AND it is allowing /usr/bin writes"
+  rm -f "$(user-union -P)/usr/bin/hello"
+fi
+
 cp /usr/bin/hello /usr/bin/hello2
 
 mkdir /usr/share10
