@@ -16,7 +16,7 @@ endif
 
 dist_bin_SCRIPTS = run-redir-union user-union
 CLEANFILES = user-union
-EXTRA_DIST = user-union.txt m4/NOTES
+EXTRA_DIST = user-union.txt m4/NOTES fso_stat
 
 # We build user-union in the makefile, instead of having a "user-union.in"
 # read by configure, so that "make build" can override prefix, libdir, etc.
