@@ -29,6 +29,10 @@ user-union: user-union.txt $(my_library_la_name)
 	chmod a-w user-union
 	chmod a+rx user-union
 
+# Ensure that libtool is rebuilt if it needs to be
+libtool: $(LIBTOOL_DEPS)
+	$(SHELL) ./config.status libtool
+
 dist_check_SCRIPTS = runtest testscript quicktest
 dist_check_DATA = expected_results
 CLEANFILES += overlay_results user-union

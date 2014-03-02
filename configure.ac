@@ -23,8 +23,8 @@ m4_ifdef([AM_PROG_AR], [AM_PROG_AR],
 # Bring in libtool.
 LT_PREREQ([2.2.6])
 # Disable static, since they're pointless in our case, and try to make
-# relocatable so that it can override anything (should we use pic-only?):
-LT_INIT([disable-static])
+# relocatable so that it can override anything
+LT_INIT([disable-static pic-only dlopen])
 
 # Checks for programs.
 AC_PROG_CC
