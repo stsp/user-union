@@ -12,10 +12,10 @@
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -88,7 +88,7 @@
 //
 // - This implementation allows a single overlay + underlay pair.
 //   Future versions should allow multiple pairs.
-// 
+//
 // USER_UNION="{branch_command}+"
 // branch_command ::= overlay ['\t' underlay]
 // branch commands are separated by newlines.
@@ -113,7 +113,7 @@
 // TODO: Test to make it work with fakeroot.
 
 // Need this so GNU C library will support dlsym's RTLD_NEXT flag:
-#define _GNU_SOURCE 
+#define _GNU_SOURCE
 // Need this for Apple MacOS X, to deal with weirdness in its "stat":
 #define _DARWIN_NO_64_BIT_INODE
 
@@ -194,7 +194,7 @@
 // Watch out for "s1=concat(s1,s2)" if s1 is allocated; if there's not
 // another pointer to s1, you won't be able to free s1 later.
 static char *concat(const char *s1, const char *s2) {
-  size_t strlen_s1 = strlen(s1); 
+  size_t strlen_s1 = strlen(s1);
   char *new = malloc(strlen_s1+strlen(s2)+1);
   strcpy(new,s1);
   strcpy(new+strlen_s1,s2);
@@ -205,7 +205,7 @@ static char *concat(const char *s1, const char *s2) {
 // Watch out for "s1=concat(s1,s2)" if s1 is allocated; if there's not
 // another pointer to s1, you won't be able to free s1 later.
 static char *concat_dir(const char *s1, const char *s2) {
-  size_t strlen_s1 = strlen(s1); 
+  size_t strlen_s1 = strlen(s1);
   char *new = malloc(strlen_s1+strlen(s2)+1);
   debug("concat_dir(%s,%s)", s1, s2);
   strcpy(new,s1);
@@ -597,14 +597,14 @@ static void make_parents(const char *overlay, const char *underlay, const char *
   q = underlay_buffer + underlay_prefix_len;
   overlay += overlay_prefix_len;
   underlay += underlay_prefix_len;
-  
+
   while(!done) {
     do {
       *(p++) = *(overlay++);
       *(q++) = *(underlay++);
       done = done || !*overlay || !*underlay;
     } while(!done && *overlay != '/');
-  
+
     if (!done) {
       int ret;
       *p = '\0';
@@ -702,7 +702,7 @@ static char *redir_name(const char *pathname, int use) {
   if (use == SKIP_UNSLASHED) {
     if (!strchr(pathname, '/'))
       return NULL;
-    else 
+    else
       use = READ;
   }
 
@@ -741,9 +741,9 @@ static char *redir_name(const char *pathname, int use) {
   overlay_prefix = underlay_prefix = NULL;
   best_match = NULL;
   best_match_len = -1;
-  // debug("Looking for best match to %s\n", canonicalized_pathname); 
+  // debug("Looking for best match to %s\n", canonicalized_pathname);
   for (branch = branchlist; branch; branch = branch->next) {
-    // debug("Comparing with branch %s\n", branch->list->val); 
+    // debug("Comparing with branch %s\n", branch->list->val);
     if (!(branch->list)) continue;
     if (branch->list->next) { // > 1 string, we have a union.
       // debug(" Examining union beginning %s\n", branch->list->val);
@@ -1328,7 +1328,7 @@ WRAP(int, mkfifo, mkfifo, (const char* path, mode_t mode), \
 
 //     ssize_t xstat(int dfd, const char *filename, unsigned atflag,
 // 	          struct xstat *buffer, size_t buflen);
-// 
+//
 //     ssize_t fxstat(int fd, struct xstat *buffer, size_t buflen);
 
 // WRAP(ssize_t, xstat, xstat, (int dfd, const char *path, unsigned atflag,
@@ -1427,12 +1427,12 @@ WRAP(int, stat64, stat64, (const char* path, struct stat64* sb), (path, sb), REA
 // int stat_inode64(const char* path, void* sb) {
 //   static stat_inode64_t* real_stat_inode64 = NULL;
 //   char buffer[PATH_MAX];
-// 
+//
 //   if (real_stat_inode64 == NULL) {
 //     real_stat_inode64 = (stat_inode64_t*) dlsym(RTLD_NEXT, "stat$INODE64");
 //     assert(real_stat_inode64 != NULL);
 //   }
-// 
+//
 //   path = remap_file("_stat$INODE64", path, buffer, READ);
 //   if (path == NULL) return -1;
 //   return real_stat_inode64(path, sb);
