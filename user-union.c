@@ -533,11 +533,10 @@ static void my_file_copy(const char *old, const char *new, mode_t mode) {
 static bool my_file_exists(const char *pathname) {
   struct stat mystats;
   bool result = my_lstat(pathname, &mystats) != -1;
-  unused_okay(result);  // "result" is not used if debugging is off.
   debug("my_file_exists(\"%s\")=%d\n", pathname, result);
   // If we can lstat it at all, it exists.  Note that this really only
   // checks if the *symlink* exists, not what it points to.
-  return my_lstat(pathname, &mystats) != -1;
+  return result;
 }
 
 static bool my_is_directory(const char *pathname) {
