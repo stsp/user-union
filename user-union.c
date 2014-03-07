@@ -661,7 +661,6 @@ static char *gen_whitelist_name(const char *overlay_prefix,
 static char *redir_name(const char *pathname, int use) {
   char *canonicalized_pathname;
   bool overlay_region = false;
-  bool is_overlay = false;
   char *best_match;
   int  len, best_match_len;
   char *overlay_prefix, *underlay_prefix;
@@ -736,7 +735,6 @@ static char *redir_name(const char *pathname, int use) {
   // Now examine branch information to find best match.
   // Track best match using best_match_len (longest one wins),
   // setting overlay_prefix as needed.
-  // If overlay_prefix is true, set is_overlay and overlay_prefix.
   overlay_region = false;
   overlay_prefix = underlay_prefix = NULL;
   best_match = NULL;
@@ -760,12 +758,7 @@ static char *redir_name(const char *pathname, int use) {
             underlay_prefix = branch->list->next->val;
             // debug(" Setting underlay_prefix=%s\n", underlay_prefix);
             best_match_len = len;
-            if (mystringlist == branch->list)
-              is_overlay = true;
-            else {
-              is_overlay = false;
-            }
-            // debug(" Best so far.  overlay_region=%d, is_overlay=%d, overlay_prefix=%s, underlay_prefix=%s\n", overlay_region, is_overlay, overlay_prefix, underlay_prefix);
+            // debug(" Best so far.  overlay_region=%d, overlay_prefix=%s, underlay_prefix=%s\n", overlay_region, overlay_prefix, underlay_prefix);
           }
         }
       }
@@ -782,7 +775,7 @@ static char *redir_name(const char *pathname, int use) {
       }
     }
   }
-  debug("redir_name: For canonicalized_pathname=%s, overlay_region=%d, is_overlay=%d, overlay_prefix=%s, underlay_prefix=%s\n", canonicalized_pathname, overlay_region, is_overlay, overlay_prefix, underlay_prefix);
+  debug("redir_name: For canonicalized_pathname=%s, overlay_region=%d, overlay_prefix=%s, underlay_prefix=%s\n", canonicalized_pathname, overlay_region, overlay_prefix, underlay_prefix);
 
   // TODO: Don't allocate canonicalized_pathname if we don't have to;
   // then, free it only if it got allocated.
@@ -794,22 +787,11 @@ static char *redir_name(const char *pathname, int use) {
     return NULL; // Don't redirect.
   }
 
-  if (is_overlay) {
-    overlay_name = canonicalized_pathname;
-    // Here we have to guess the intended underlay name if >1 underlay
-    debug("Hmm. underlay_prefix=%s, canon pathname-overlay prefix=%s\n",
-      underlay_prefix, canonicalized_pathname + strlen(overlay_prefix));
-    underlay_name = concat_dir(underlay_prefix,
-                     canonicalized_pathname + skip(overlay_prefix));
-    whitelist_name = gen_whitelist_name(overlay_prefix,
-                     canonicalized_pathname + skip(overlay_prefix));
-  } else {
-    underlay_name = canonicalized_pathname;
-    overlay_name = concat_dir(overlay_prefix,
+  underlay_name = canonicalized_pathname;
+  overlay_name = concat_dir(overlay_prefix,
                      canonicalized_pathname + skip(underlay_prefix));
-    whitelist_name = gen_whitelist_name(overlay_prefix,
+  whitelist_name = gen_whitelist_name(overlay_prefix,
                      canonicalized_pathname + skip(underlay_prefix));
-  }
 
   // Whitelist handling.
   whitelist_name_full = malloc(strlen(whitelist_name) + strlen(whitelist_suffix) + 1);
@@ -901,17 +883,10 @@ static char *redir_name(const char *pathname, int use) {
     // which only returns the underlay name if it exists.
     // Do *NOT* prepend the override prefix, we need the original name.
     debug("SWITCH_UNDERLAY!\n");
-    if (is_overlay) {
-      free(overlay_name);
-      debug("redir_name 55 returning underlay name %s\n", underlay_name);
-      return underlay_name;
-    }
-    else {
-      free(overlay_name);
-      free(underlay_name);
-      debug("redir_name 56 returning NULL, interp as %s\n", pathname);
-      return NULL;
-    }
+    free(overlay_name);
+    free(underlay_name);
+    debug("redir_name 56 returning NULL, interp as %s\n", pathname);
+    return NULL;
   } else if (use == OPENDIR) {
     // Create a new directory that mirrors
     // whether it exists or not.  This is different from PREFER_UNDERLAY,
