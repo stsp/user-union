@@ -363,14 +363,14 @@ static inline char *prepend_override_prefix(char *s) {
 // to eventually expand the code to support multiple overlays, and
 // this structure supports that.
 
-struct stringlist;
 struct stringlist {
   char *val;
   struct stringlist *next;
 };
 
 struct branch {
-  struct stringlist *list;
+  char *overlay;
+  struct stringlist *underlay;
   struct branch *next;
 };
 
@@ -380,6 +380,7 @@ static struct branch *branchlist;
 static void initialize_branchlist(void) {
   char *spec;
   int len;
+  int tok_num;
   struct branch *current_branch;
   struct branch *previous_branch = NULL;
   struct stringlist *current_stringlist;
@@ -413,6 +414,7 @@ static void initialize_branchlist(void) {
     previous_branch = current_branch;
 
     current_stringlist = previous_stringlist = NULL;
+    tok_num = 0;
     while (*spec && *spec != '\n') {
       if (*spec == '\t') spec++;
       len = strcspn(spec, "\t\n");
@@ -429,22 +431,24 @@ static void initialize_branchlist(void) {
          "user-union: FATAL.  Directory %s ends with '/'.\n", spec);
         exit(1);
       }
-      current_stringlist = malloc(sizeof(struct stringlist));
-      current_stringlist->next = NULL;
-      current_string = malloc(len + 1);
-      strncpy(current_string, spec, len);
-      current_string[len] = '\0';
-      current_stringlist->val = current_string;
-      if (!previous_stringlist) {
-        current_branch->list = current_stringlist; // First list in branch.
+      current_string = strndup(spec, len);
+      if (tok_num == 0) {
+        current_branch->overlay = current_string;
       } else {
-        previous_stringlist->next = current_stringlist;
+        current_stringlist = malloc(sizeof(struct stringlist));
+        current_stringlist->next = NULL;
+        current_stringlist->val = current_string;
+        if (!previous_stringlist) {
+          current_branch->underlay = current_stringlist; // First list in branch.
+        } else {
+          previous_stringlist->next = current_stringlist;
+        }
+        previous_stringlist = current_stringlist;
       }
-      previous_stringlist = current_stringlist;
       spec += len;
+      tok_num++;
     }
-    if (current_branch->list && current_branch->list->next &&
-        current_branch->list->next->next) {
+    if (current_branch->underlay && current_branch->underlay->next) {
         fprintf(stderr, "user-union: FATAL.  Cannot have >1 underlay.\n");
         exit(1);
     }
@@ -742,10 +746,10 @@ static char *redir_name(const char *pathname, int use) {
   // debug("Looking for best match to %s\n", canonicalized_pathname);
   for (branch = branchlist; branch; branch = branch->next) {
     // debug("Comparing with branch %s\n", branch->list->val);
-    if (!(branch->list)) continue;
-    if (branch->list->next) { // > 1 string, we have a union.
+    if (!(branch->overlay)) continue;
+    if (branch->underlay) { // > 1 string, we have a union.
       // debug(" Examining union beginning %s\n", branch->list->val);
-      for (mystringlist = branch->list; mystringlist;
+      for (mystringlist = branch->underlay; mystringlist;
            mystringlist = mystringlist->next) {
         // debug("  Examining branch %s\n", mystringlist->val);
         if (within(canonicalized_pathname, mystringlist->val)) {
@@ -754,8 +758,8 @@ static char *redir_name(const char *pathname, int use) {
           if (len > best_match_len) {
             // This is better than any previous match, accept it.
             overlay_region = true;
-            overlay_prefix = branch->list->val;
-            underlay_prefix = branch->list->next->val;
+            overlay_prefix = branch->overlay;
+            underlay_prefix = branch->underlay->val;
             // debug(" Setting underlay_prefix=%s\n", underlay_prefix);
             best_match_len = len;
             // debug(" Best so far.  overlay_region=%d, overlay_prefix=%s, underlay_prefix=%s\n", overlay_region, overlay_prefix, underlay_prefix);
@@ -764,8 +768,8 @@ static char *redir_name(const char *pathname, int use) {
       }
     } else { // Non-union
       // debug(" Examining non-union %s\n", branch->list->val);
-      if (within(canonicalized_pathname, branch->list->val)) {
-        len = strlen(branch->list->val);
+      if (within(canonicalized_pathname, branch->overlay)) {
+        len = strlen(branch->overlay);
         if (len > best_match_len) {
           // This is better than any previous match, accept it.
           overlay_region = false;
