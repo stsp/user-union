@@ -16,12 +16,10 @@ my_library_la_name=XYZ
 libdir=XYZ
 
 # Remove 'space' from IFS, so filenames with spaces work well.
-IFS="$(printf '\n\t')"
-tab="$(printf '\t')"
+IFS=$'\n\t'
+tab=$'\t'
 # The following is a standards-compliant trick to get newline into a variable:
-newline="$(printf '\nX')"
-newline="${newline%X}"
-
+newline=$'\n'
 
 SET_BRANCHES=""
 OVERLAY_DIRECTORY=""
