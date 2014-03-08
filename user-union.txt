@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # user-union [options] [[--] command]
 # This performs a user-space union mount, implemented using LD_PRELOAD.
@@ -16,9 +16,17 @@ my_library_la_name=XYZ
 libdir=XYZ
 
 # Remove 'space' from IFS, so filenames with spaces work well.
+# We don't use printf(1) here, because although printf(1) is in POSIX,
+# fiddling with LD_PRELOAD may cause it to not work as expected.
+# Here we use $'...'; this is not in the current version of POSIX, but the
+# POSIX group has accepted this as an addition to the POSIX standard, per:
+# http://austingroupbugs.net/view.php?id=249
+# The $'...' is widely supported, including by bash, ksh, and others.
+# However, since some versions of dash do not support $'...', we will claim
+# that this is a bash-specific script (since bash is widely available and
+# is *known* to support $'...'):
 IFS=$'\n\t'
 tab=$'\t'
-# The following is a standards-compliant trick to get newline into a variable:
 newline=$'\n'
 
 SET_BRANCHES=""
