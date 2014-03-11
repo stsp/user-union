@@ -756,8 +756,8 @@ static char *redir_name(const char *pathname, int use) {
     // FIXME - if error or overflow!:
     getcwd(current_directory, sizeof(current_directory));
     len = strlen(current_directory);
-    current_directory[len + 1] = '\0'; /* FIXME: Buffer overflow */
-    current_directory[len] = '/';
+    if (len > 1)
+      strcat(current_directory, "/");
     canonicalized_pathname = concat_dir(current_directory, pathname);
     debug("redir_name, relative pathname became %s\n", canonicalized_pathname);
   }
