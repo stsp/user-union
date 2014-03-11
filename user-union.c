@@ -179,7 +179,7 @@
 #endif
 
 // Use this to mark intentionally-unused variables.
-#define unused_okay(VAR) (void) VAR;
+#define unused_okay(VAR) (void) VAR
 
 // Sometimes it's easier to just create a big char buffer and use it.
 // When we do, here's the size we use.
@@ -1063,13 +1063,18 @@ BASIC_RETURNS(RETURNTYPE, __##NAME, PARAMETER_TYPES, RESULT)
 RETURNTYPE NAME PARAMETER_TYPES {                                           \
   RETURNTYPE result;                                                        \
   char *new_pathname;                                                       \
+  const char *old_pathname = NULL;                                          \
   debug("Intercepted " #NAME "\n");                                         \
   new_pathname = redir_name(path, USAGE);                                   \
-  if (new_pathname) path = new_pathname;                                    \
+  if (new_pathname) {                                                       \
+    old_pathname = path;                                                    \
+    path = new_pathname;                                                    \
+  }                                                                         \
   result = real_##NAME ARGUMENTS;                                           \
   AFTER ;                                                                   \
   if (new_pathname) free(new_pathname);                                     \
   debug("Finished wrapped version of " #NAME "\n");                         \
+  unused_okay(old_pathname);                                                \
   return result;                                                            \
 }
 
@@ -1082,17 +1087,27 @@ RETURNTYPE NAME PARAMETER_TYPES {                                           \
 RETURNTYPE NAME PARAMETER_TYPES {                                           \
   RETURNTYPE result;                                                        \
   char *new_pathname;                                                       \
+  const char *old_pathname = NULL;                                          \
   char *new_pathname2;                                                      \
+  const char *old_pathname2 = NULL;                                         \
   debug("Intercepted " #NAME "\n");                                         \
   new_pathname = redir_name(path, USAGE1);                                  \
   new_pathname2 = redir_name(path2, USAGE2);                                \
-  if (new_pathname) path = new_pathname;                                    \
-  if (new_pathname2) path2 = new_pathname2;                                 \
+  if (new_pathname) {                                                       \
+    old_pathname = path;                                                    \
+    path = new_pathname;                                                    \
+  }                                                                         \
+  if (new_pathname2) {                                                      \
+    old_pathname2 = path2;                                                  \
+    path2 = new_pathname2;                                                  \
+  }                                                                         \
   result = real_##NAME ARGUMENTS;                                           \
   AFTER ;                                                                   \
   if (new_pathname) free(new_pathname);                                     \
   if (new_pathname2) free(new_pathname2);                                   \
   debug("Finished wrapped version of " #NAME "\n");                         \
+  unused_okay(old_pathname);                                                \
+  unused_okay(old_pathname2);                                               \
   return result;                                                            \
 }
 
@@ -1108,6 +1123,7 @@ int NAME PARAMETER_TYPES {                                                  \
   mode_t mode;                                                              \
   va_list ap;                                                               \
   char *new_pathname;                                                       \
+  const char *old_pathname = NULL;                                          \
                                                                             \
   if (flags & O_CREAT) {                                                    \
     va_start(ap, flags);                                                    \
@@ -1118,11 +1134,15 @@ int NAME PARAMETER_TYPES {                                                  \
   }                                                                         \
   debug("Intercepted open(\"%s\",0%o,0%o)\n", path, flags, mode);           \
   new_pathname = redir_name(path, USAGE);                                   \
-  if (new_pathname) path = new_pathname;                                    \
+  if (new_pathname) {                                                       \
+    old_pathname = path;                                                    \
+    path = new_pathname;                                                    \
+  }                                                                         \
   result = real_##NAME ARGUMENTS ;                                          \
-  unwhitelist_if_error_free(result >= 0, path);                             \
+  unwhitelist_if_error_free(result >= 0, old_pathname);                     \
   if (new_pathname) free(new_pathname);                                     \
   debug("Finished wrapped version of " #NAME "\n");                         \
+  unused_okay(old_pathname);                                                \
   return result;                                                            \
 }
 
@@ -1173,14 +1193,14 @@ OPEN_WRAP(NAME##64, PARAMETER_TYPES, PARAMETER_TYPES_ALL, ARGUMENTS, USAGE)
 
 // Helper functions for the wrappers
 static void whitelist_if_error_free(int result, const char *path) {
-  if (result) {
+  if (result && path) {
     char *s = redir_name(path, WHITELIST);
     if (s) free(s);
   }
 }
 
 static void unwhitelist_if_error_free(int result, const char *path) {
-  if (result) {
+  if (result && path) {
     char *s = redir_name(path, UNWHITELIST);
     if (s) free(s);
   }
@@ -1215,13 +1235,13 @@ WRAP64(int, newfstatat, newfstatat,
 
 WRAP(int, mkdir, mkdir, (const char *path, mode_t mode), \
                  (path, mode), EXCLUSIVE, \
-                 unwhitelist_if_error_free(result>=0, path))
+                 unwhitelist_if_error_free(result>=0, old_pathname))
 WRAP(int, mkdirat, mkdirat, (int dirfd, const char *path, mode_t mode), \
                  (dirfd, path, mode), EXCLUSIVE|AT(dirfd), \
-                 unwhitelist_if_error_free(result>=0, path))
+                 unwhitelist_if_error_free(result>=0, old_pathname))
 
 WRAP(int, rmdir, rmdir, (const char *path), \
-                 (path), WRITE, whitelist_if_error_free(result>=0, path))
+                 (path), WRITE, whitelist_if_error_free(result>=0, old_pathname))
 
 // Pretend that we have an effective UID of root.
 // That way, tools that first check to see if we have permission to do
@@ -1255,28 +1275,28 @@ WRAP(ssize_t, readlinkat, readlinkat, (int dirfd, const char *path, char *buf, s
 // the symlink will still be correct.
 TWO_WRAP(int, symlink, symlink, (const char *path, const char *path2), \
        (path, path2), SWITCH_UNDERLAY, EXCLUSIVE, \
-       unwhitelist_if_error_free(result>=0, path2))
+       unwhitelist_if_error_free(result>=0, old_pathname2))
 TWO_WRAP(int, symlinkat, symlinkat, (const char *path, int newdfd, const char *path2), \
        (path, newdfd, path2), SWITCH_UNDERLAY, EXCLUSIVE|AT(newdfd), \
-       unwhitelist_if_error_free(result>=0, path2))
+       unwhitelist_if_error_free(result>=0, old_pathname2))
 
 // We can't link across filesystems, so on some environments this will fail:
 TWO_WRAP(int, link, link, (const char *path, const char *path2), \
        (path, path2), READ, EXCLUSIVE, \
-       unwhitelist_if_error_free(result>=0, path2))
+       unwhitelist_if_error_free(result>=0, old_pathname2))
 TWO_WRAP(int, linkat, linkat,
  (int olddirfd, const char *path, int newdirfd, const char *path2, int flags), \
  (olddirfd, path, newdirfd, path2, flags), READ|AT(olddirfd), EXCLUSIVE|AT(newdirfd), \
-       unwhitelist_if_error_free(result>=0, path2))
+       unwhitelist_if_error_free(result>=0, old_pathname2))
 
 TWO_WRAP(int, rename, rename, (const char *path, const char *path2), \
-       (path, path2), WRITE, EXCLUSIVE, whitelist_if_error_free(result>=0, path); \
-       unwhitelist_if_error_free(result>=0, path2))
+       (path, path2), WRITE, EXCLUSIVE, whitelist_if_error_free(result>=0, old_pathname); \
+       unwhitelist_if_error_free(result>=0, old_pathname2))
 
 TWO_WRAP(int, renameat, renameat, (int olddirfd, const char *path, int newdirfd, \
        const char *path2), (olddirfd, path, newdirfd, path2), WRITE|AT(olddirfd), \
-       EXCLUSIVE|AT(newdirfd), whitelist_if_error_free(result>=0, path) ; \
-       unwhitelist_if_error_free(result>=0, path2))
+       EXCLUSIVE|AT(newdirfd), whitelist_if_error_free(result>=0, old_pathname) ; \
+       unwhitelist_if_error_free(result>=0, old_pathname2))
 
 
 WRAP(int, utime, utime, (const char *path, const struct utimbuf *times),
@@ -1299,19 +1319,20 @@ WRAP(int, chown, chown, (const char* path, uid_t owner, gid_t group), \
 WRAP(int, lchown, lchown, (const char* path, uid_t owner, gid_t group), \
      (path, owner, group), WRITE,)
 
-WRAP64(int, unlink, unlink, (const char* path), (path), EXIST, whitelist_if_error_free(result>=0, path))
-WRAP64(int, unlinkat, unlinkat, (int dirfd, const char* path, int flags), (dirfd, path, flags), EXIST|AT(dirfd), whitelist_if_error_free(result>=0,path))
+WRAP64(int, unlink, unlink, (const char* path), (path), EXIST, whitelist_if_error_free(result>=0, old_pathname))
+WRAP64(int, unlinkat, unlinkat, (int dirfd, const char* path, int flags), (dirfd, path, flags), EXIST|AT(dirfd),
+     whitelist_if_error_free(result>=0,old_pathname))
 
 
 // We can only create SOME kinds of nodes, but we can try.
 WRAP(int, mknod, mknod, (const char* path, mode_t mode, dev_t dev), \
      (path, mode, dev), WRITE, \
-       unwhitelist_if_error_free(result>=0, path))
+       unwhitelist_if_error_free(result>=0, old_pathname))
 // This is probably implemented with mknod, but we'll specially wrap it
 // no matter what.
 WRAP(int, mkfifo, mkfifo, (const char* path, mode_t mode), \
      (path, mode), WRITE, \
-       unwhitelist_if_error_free(result>=0, path))
+       unwhitelist_if_error_free(result>=0, old_pathname))
 
 
 
@@ -1462,15 +1483,15 @@ WRAP(int, lstat, lstat, (const char* path, struct stat* sb), (path, sb), READ,)
 // do it ourselves.
 
 WRAP(FILE *, fopen,   fopen,   (const char *path, const char *mode), \
-                    (path, mode), use_fopen(mode), unwhitelist_if_error_free(result!=NULL, path))
+                    (path, mode), use_fopen(mode), unwhitelist_if_error_free(result!=NULL, old_pathname))
 
 WRAP(FILE *, freopen, freopen, \
        (const char *path, const char *mode, FILE *stream), \
-                     (path, mode, stream), use_fopen(mode),unwhitelist_if_error_free(result!=NULL, path))
+                     (path, mode, stream), use_fopen(mode),unwhitelist_if_error_free(result!=NULL, old_pathname))
 
 WRAP64(int, creat, creat, \
       (const char *path, mode_t mode), (path, mode), WRITE, \
-       unwhitelist_if_error_free(result>=0, path))
+       unwhitelist_if_error_free(result>=0, old_pathname))
 
 
 // FIXME: "SKIP_UNSLASHED" should work *most* of the time, but
