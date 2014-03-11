@@ -45,7 +45,6 @@ add_pair() {
   # $1 is the overlay, $2 is the underlay
   [ -n "$SET_BRANCHES" ] && SET_BRANCHES="${SET_BRANCHES}${newline}"
   SET_BRANCHES="${SET_BRANCHES}$1${tab}$2"
-  SET_BRANCHES="${SET_BRANCHES}${newline}$1/.user-union"
   if ! mkdir -p "$1/.user-union/opendir/" "$1/.user-union/whitelist/"
   then
     echo "FAILURE: Cannot create directories in $1." >&2
