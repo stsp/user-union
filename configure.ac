@@ -57,5 +57,7 @@ AC_FUNC_LSTAT_FOLLOWS_SLASHED_SYMLINK
 AC_FUNC_MALLOC
 AC_CHECK_FUNCS([euidaccess getcwd strchr strcspn strdup strstr])
 
+CFLAGS="$CFLAGS -Wall"
+
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

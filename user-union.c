@@ -517,8 +517,9 @@ static int my_open64(const char *path, int flags, mode_t mode);
 static int my_mkdir(const char *pathname, mode_t mode);
 static int my_unlink(const char *path);
 static int my_lstat(const char *path, struct stat *buf);
+#if 0
 static DIR *my_opendir(const char *name);
-
+#endif
 // static int my_stat(const char *path, struct stat *buf);
 
 
@@ -693,7 +694,6 @@ static char *gen_whitelist_name(const char *overlay_prefix,
 static char *redir_name(const char *pathname, int use) {
   char *canonicalized_pathname;
   bool overlay_region = false;
-  char *best_match;
   int  len, best_match_len;
   char *overlay_prefix, *underlay_prefix, *mount_point;
   char *overlay_name;   // Will be allocated.
@@ -703,8 +703,10 @@ static char *redir_name(const char *pathname, int use) {
   bool is_whitelisted;
   char *whitelist_name;
   char *whitelist_name_full;
+#if 0
   bool is_at = false;
   int  at_fd;
+#endif
 
   debug("redir_name begin: path=%s usage=%d\n", pathname, use);
 
@@ -723,11 +725,12 @@ static char *redir_name(const char *pathname, int use) {
   // in an "at" function.  We'll change "use" so it's just the primary use,
   // and set "is_at" and "at_fd" as appropriate.
   if (use & IS_AT_FLAG) {
+#if 0
     is_at = true;
     at_fd = GET_FD(use);
+#endif
     use &= USAGE_T_MASK;
   }
-
   // If use is "SKIP_UNSLASHED", and there's no slash in the pathname,
   // don't bother to do lots of calculations.  We'll just use what we got.
   if (use == SKIP_UNSLASHED) {
@@ -769,7 +772,6 @@ static char *redir_name(const char *pathname, int use) {
   // setting overlay_prefix as needed.
   overlay_region = false;
   overlay_prefix = underlay_prefix = NULL;
-  best_match = NULL;
   best_match_len = -1;
   // debug("Looking for best match to %s\n", canonicalized_pathname);
   for (branch = branchlist; branch; branch = branch->next) {
@@ -1599,9 +1601,9 @@ MAKE_MY_FUNCTION(int, mkdir,  (const char *path, mode_t mode), \
 MAKE_MY_FUNCTION(int, lstat,  (const char *path, struct stat *buf), \
                               (path, buf))
 MAKE_MY_FUNCTION(int, unlink, (const char *path), (path))
-
+#if 0
 MAKE_MY_FUNCTION(DIR *, opendir, (const char *path), (path))
-
+#endif
 
 /*
     27: 00000000     0 FUNC    GLOBAL DEFAULT  UND __lxstat64@GLIBC_2.2 (6)
