@@ -371,6 +371,7 @@ struct stringlist {
 struct branch {
   char *overlay;
   struct stringlist *underlay;
+  char *mount_point;
   struct branch *next;
 };
 
@@ -452,6 +453,11 @@ static void initialize_branchlist(void) {
         fprintf(stderr, "user-union: FATAL.  Cannot have >1 underlay.\n");
         exit(1);
     }
+    /* for now mount point matches last underlay */
+    if (current_stringlist)
+      current_branch->mount_point = strdup(current_stringlist->val);
+    else
+      current_branch->mount_point = strdup(current_branch->overlay);
   }
   // Complete.
 #ifdef DEBUG
@@ -626,6 +632,29 @@ static void make_parents(const char *overlay, const char *underlay, const char *
   errno = saved_errno;
 }
 
+static int subpath_len(const char *path)
+{
+  char *p = strdup(path);
+  char *end;
+  int len = 0;
+  while (*p) {
+    if (my_file_exists(p)) {
+      len = strlen(p);
+      if (len == 1) {	// skip single /
+        assert(p[0] == '/');
+        len = 0;
+      }
+      break;
+    }
+    end = strrchr(p, '/');
+    if (!end)
+      break;
+    *end = 0;
+  }
+  free(p);
+  return len;
+}
+
 /* Retrieve st_mode of given file.  You can then use
  * S_ISREG(m) (is regular file), S_ISDIR(m) (is directory), etc.
  */
@@ -666,7 +695,7 @@ static char *redir_name(const char *pathname, int use) {
   bool overlay_region = false;
   char *best_match;
   int  len, best_match_len;
-  char *overlay_prefix, *underlay_prefix;
+  char *overlay_prefix, *underlay_prefix, *mount_point;
   char *overlay_name;   // Will be allocated.
   char *underlay_name;  // Will be allocated.
   struct branch *branch;
@@ -745,26 +774,48 @@ static char *redir_name(const char *pathname, int use) {
   // debug("Looking for best match to %s\n", canonicalized_pathname);
   for (branch = branchlist; branch; branch = branch->next) {
     // debug("Comparing with branch %s\n", branch->list->val);
-    if (!(branch->overlay)) continue;
-    if (branch->underlay) { // > 1 string, we have a union.
+    assert(branch->overlay);
+    if (within(canonicalized_pathname, branch->mount_point)) {
+      len = strlen(branch->mount_point);
+      // debug(" len=%d, best_match_len=%d\n", len, best_match_len);
+      if (len > best_match_len) {
+        // This is better than any previous match, accept it.
+        overlay_region = !!branch->underlay;	// have both underlay and overlay
+        overlay_prefix = branch->overlay;
+        mount_point = branch->mount_point;
+        best_match_len = len;
+        // debug(" Best so far.  overlay_region=%d, overlay_prefix=%s, underlay_prefix=%s\n", overlay_region, overlay_prefix, underlay_prefix);
+      } else {
+        // not interested in this branch
+        continue;
+      }
+    }
+    if (overlay_region) {
+      int best_match_len_undl = 0;
       // debug(" Examining union beginning %s\n", branch->list->val);
       for (mystringlist = branch->underlay; mystringlist;
            mystringlist = mystringlist->next) {
+        char *tmp_name;
+        int len_undl, len_pref;
+        len_pref = strlen(mystringlist->val);
         // debug("  Examining branch %s\n", mystringlist->val);
-        if (within(canonicalized_pathname, mystringlist->val)) {
-          len = strlen(mystringlist->val);
-          // debug(" len=%d, best_match_len=%d\n", len, best_match_len);
-          if (len > best_match_len) {
-            // This is better than any previous match, accept it.
-            overlay_region = true;
-            overlay_prefix = branch->overlay;
-            underlay_prefix = branch->underlay->val;
-            // debug(" Setting underlay_prefix=%s\n", underlay_prefix);
-            best_match_len = len;
-            // debug(" Best so far.  overlay_region=%d, overlay_prefix=%s, underlay_prefix=%s\n", overlay_region, overlay_prefix, underlay_prefix);
-          }
+        tmp_name = concat_dir(mystringlist->val,
+                     canonicalized_pathname + skip(mount_point));
+        len_undl = subpath_len(tmp_name);
+        if (len_undl >= len_pref)
+          len_undl -= len_pref;
+        else
+          len_undl = 0;
+        free(tmp_name);
+        if (len_undl >= best_match_len_undl) {
+          underlay_prefix = mystringlist->val;
+          best_match_len_undl = len_undl;
+          break;
         }
       }
+      if (!underlay_prefix)
+        underlay_prefix = branch->underlay->val;
+      // debug(" Setting underlay_prefix=%s\n", underlay_prefix);
     } else { // Non-union
       // debug(" Examining non-union %s\n", branch->list->val);
       if (within(canonicalized_pathname, branch->overlay)) {
@@ -790,11 +841,13 @@ static char *redir_name(const char *pathname, int use) {
     return NULL; // Don't redirect.
   }
 
-  underlay_name = canonicalized_pathname;
+  underlay_name = concat_dir(underlay_prefix,
+                     canonicalized_pathname + skip(mount_point));
   overlay_name = concat_dir(overlay_prefix,
-                     canonicalized_pathname + skip(underlay_prefix));
+                     canonicalized_pathname + skip(mount_point));
   whitelist_name = gen_whitelist_name(overlay_prefix,
-                     canonicalized_pathname + skip(underlay_prefix));
+                     canonicalized_pathname + skip(mount_point));
+  free(canonicalized_pathname);
 
   // Whitelist handling.
   whitelist_name_full = malloc(strlen(whitelist_name) + strlen(whitelist_suffix) + 1);
