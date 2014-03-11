@@ -1173,14 +1173,14 @@ OPEN_WRAP(NAME##64, PARAMETER_TYPES, PARAMETER_TYPES_ALL, ARGUMENTS, USAGE)
 
 // Helper functions for the wrappers
 static void whitelist_if_error_free(int result, const char *path) {
-  if (result == 0) {
+  if (result) {
     char *s = redir_name(path, WHITELIST);
     if (s) free(s);
   }
 }
 
 static void unwhitelist_if_error_free(int result, const char *path) {
-  if (result == 0) {
+  if (result) {
     char *s = redir_name(path, UNWHITELIST);
     if (s) free(s);
   }
@@ -1215,13 +1215,13 @@ WRAP64(int, newfstatat, newfstatat,
 
 WRAP(int, mkdir, mkdir, (const char *path, mode_t mode), \
                  (path, mode), EXCLUSIVE, \
-                 unwhitelist_if_error_free(result, path))
+                 unwhitelist_if_error_free(result>=0, path))
 WRAP(int, mkdirat, mkdirat, (int dirfd, const char *path, mode_t mode), \
                  (dirfd, path, mode), EXCLUSIVE|AT(dirfd), \
-                 unwhitelist_if_error_free(result, path))
+                 unwhitelist_if_error_free(result>=0, path))
 
 WRAP(int, rmdir, rmdir, (const char *path), \
-                 (path), WRITE, whitelist_if_error_free(result, path))
+                 (path), WRITE, whitelist_if_error_free(result>=0, path))
 
 // Pretend that we have an effective UID of root.
 // That way, tools that first check to see if we have permission to do
@@ -1255,26 +1255,28 @@ WRAP(ssize_t, readlinkat, readlinkat, (int dirfd, const char *path, char *buf, s
 // the symlink will still be correct.
 TWO_WRAP(int, symlink, symlink, (const char *path, const char *path2), \
        (path, path2), SWITCH_UNDERLAY, EXCLUSIVE, \
-       unwhitelist_if_error_free(result, path2))
+       unwhitelist_if_error_free(result>=0, path2))
 TWO_WRAP(int, symlinkat, symlinkat, (const char *path, int newdfd, const char *path2), \
        (path, newdfd, path2), SWITCH_UNDERLAY, EXCLUSIVE|AT(newdfd), \
-       unwhitelist_if_error_free(result, path2))
+       unwhitelist_if_error_free(result>=0, path2))
 
 // We can't link across filesystems, so on some environments this will fail:
 TWO_WRAP(int, link, link, (const char *path, const char *path2), \
        (path, path2), READ, EXCLUSIVE, \
-       unwhitelist_if_error_free(result, path2))
+       unwhitelist_if_error_free(result>=0, path2))
 TWO_WRAP(int, linkat, linkat,
  (int olddirfd, const char *path, int newdirfd, const char *path2, int flags), \
  (olddirfd, path, newdirfd, path2, flags), READ|AT(olddirfd), EXCLUSIVE|AT(newdirfd), \
-       unwhitelist_if_error_free(result, path2))
+       unwhitelist_if_error_free(result>=0, path2))
 
 TWO_WRAP(int, rename, rename, (const char *path, const char *path2), \
-       (path, path2), WRITE, EXCLUSIVE, whitelist_if_error_free(result, path); \
-       unwhitelist_if_error_free(result, path2))
+       (path, path2), WRITE, EXCLUSIVE, whitelist_if_error_free(result>=0, path); \
+       unwhitelist_if_error_free(result>=0, path2))
 
-TWO_WRAP(int, renameat, renameat, (int olddirfd, const char *path, int newdirfd, const char *path2), (olddirfd, path, newdirfd, path2), WRITE|AT(olddirfd), EXCLUSIVE|AT(newdirfd), whitelist_if_error_free(result, path) ; \
-       unwhitelist_if_error_free(result, path2))
+TWO_WRAP(int, renameat, renameat, (int olddirfd, const char *path, int newdirfd, \
+       const char *path2), (olddirfd, path, newdirfd, path2), WRITE|AT(olddirfd), \
+       EXCLUSIVE|AT(newdirfd), whitelist_if_error_free(result>=0, path) ; \
+       unwhitelist_if_error_free(result>=0, path2))
 
 
 WRAP(int, utime, utime, (const char *path, const struct utimbuf *times),
