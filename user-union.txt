@@ -40,10 +40,15 @@ NOOP=n
 # FIXME: Put this value in one place in the source code
 OVERRIDE_PREFIX_VALUE="/./.././."
 
+add_branch() {
+  [ -n "$MY_USER_UNION" ] && MY_USER_UNION="${MY_USER_UNION}${newline}"
+  MY_USER_UNION="${MY_USER_UNION}$1"
+  [ -n "$2" ] && MY_USER_UNION="${MY_USER_UNION}${tab}$2"
+}
+
 add_pair() {
   # $1 is the overlay, $2 is the underlay
-  [ -n "$MY_USER_UNION" ] && MY_USER_UNION="${MY_USER_UNION}${newline}"
-  MY_USER_UNION="${MY_USER_UNION}$1${tab}$2"
+  add_branch
   if ! mkdir -p "$1/.user-union/opendir/" "$1/.user-union/whitelist/"
   then
     echo "FAILURE: Cannot create directories in $1." >&2
@@ -105,8 +110,7 @@ while [ $# -gt 0 ] ; do
         add_pair "$1" "$2"
         shift ; shift ;;
     -i) shift
-        [ -n "$MY_USER_UNION" ] && MY_USER_UNION="${MY_USER_UNION}${newline}"
-        MY_USER_UNION="${MY_USER_UNION}$1"
+        add_branch "$1"
         shift ;;
     -m) shift
         anon_overlay="$(mktemp -d)"
@@ -133,7 +137,9 @@ if [ -z "$MY_USER_UNION" ] ; then
  # Nothing set, create reasonable defaults.
  add_pair "${OVERLAY_DIRECTORY:-"$DEFAULT_OVERLAY_DIRECTORY"}" \
           "${UNDERLAY_DIRECTORY:-"$DEFAULT_UNDERLAY_DIRECTORY"}"
- MY_USER_UNION="${MY_USER_UNION}${newline}${DEFAULT_NONUNION}"
+ for i in ${DEFAULT_NONUNION}; do
+   add_branch "$i"
+ done
 fi
 
 if [ -n "$USER_UNION" ] ; then
