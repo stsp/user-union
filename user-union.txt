@@ -29,7 +29,6 @@ IFS=$'\n\t'
 tab=$'\t'
 newline=$'\n'
 
-SET_BRANCHES=""
 OVERLAY_DIRECTORY=""
 UNDERLAY_DIRECTORY=""
 DEFAULT_OVERLAY_DIRECTORY="/tmp/redir"
@@ -43,8 +42,8 @@ OVERRIDE_PREFIX_VALUE="/./.././."
 
 add_pair() {
   # $1 is the overlay, $2 is the underlay
-  [ -n "$SET_BRANCHES" ] && SET_BRANCHES="${SET_BRANCHES}${newline}"
-  SET_BRANCHES="${SET_BRANCHES}$1${tab}$2"
+  [ -n "$MY_USER_UNION" ] && MY_USER_UNION="${MY_USER_UNION}${newline}"
+  MY_USER_UNION="${MY_USER_UNION}$1${tab}$2"
   if ! mkdir -p "$1/.user-union/opendir/" "$1/.user-union/whitelist/"
   then
     echo "FAILURE: Cannot create directories in $1." >&2
@@ -106,8 +105,8 @@ while [ $# -gt 0 ] ; do
         add_pair "$1" "$2"
         shift ; shift ;;
     -i) shift
-        [ -n "$SET_BRANCHES" ] && SET_BRANCHES="${SET_BRANCHES}${newline}"
-        SET_BRANCHES="${SET_BRANCHES}$1"
+        [ -n "$MY_USER_UNION" ] && MY_USER_UNION="${MY_USER_UNION}${newline}"
+        MY_USER_UNION="${MY_USER_UNION}$1"
         shift ;;
     -m) shift
         anon_overlay="$(mktemp -d)"
@@ -130,14 +129,13 @@ while [ $# -gt 0 ] ; do
   esac
 done
 
-if [ -z "$SET_BRANCHES" ] ; then
+if [ -z "$MY_USER_UNION" ] ; then
  # Nothing set, create reasonable defaults.
  add_pair "${OVERLAY_DIRECTORY:-"$DEFAULT_OVERLAY_DIRECTORY"}" \
           "${UNDERLAY_DIRECTORY:-"$DEFAULT_UNDERLAY_DIRECTORY"}"
- SET_BRANCHES="${SET_BRANCHES}${newline}${DEFAULT_NONUNION}"
+ MY_USER_UNION="${MY_USER_UNION}${newline}${DEFAULT_NONUNION}"
 fi
 
-MY_USER_UNION="$SET_BRANCHES"
 if [ -n "$USER_UNION" ] ; then
   MY_USER_UNION="$MY_USER_UNION${newline}$USER_UNION"
 fi
