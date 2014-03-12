@@ -26,7 +26,6 @@ user-union: user-union.txt $(my_library_la_name)
           -e 's!^\(my_library_la_name\)=\(.*\)!\1="$(my_library_la_name)"!' \
           -e 's!^\(libdir\)=.*!\1="$(libdir)"!' \
           < $(srcdir)/user-union.txt > user-union
-	chmod a-w user-union
 	chmod a+rx user-union
 
 # Ensure that libtool is rebuilt if it needs to be
