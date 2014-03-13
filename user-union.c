@@ -178,6 +178,16 @@
 #define debug(format, args...) do { } while (0)
 #endif
 
+#if defined(__linux__) && !defined(__UCLIBC__)
+
+// Special stuff to handle GNU C library.
+// Technically, that's not the same as __linux__.
+
+// GNU C library doesn't normally let us redirect its internal
+// calls to open(), etc., so we have to wrap functions like fopen() ourselves:
+#define WRAP_USERS 1
+#endif
+
 // Use this to mark intentionally-unused variables.
 #define unused_okay(VAR) (void) VAR
 
@@ -266,6 +276,7 @@ typedef enum usage {
   // NOTE: WHITELIST must be last one so we can check enum length.
 } usage_t;
 
+#ifdef WRAP_USERS
 // Convert fopen() flags to usage flags
 static usage_t use_fopen(const char *mode) {
   if (strstr(mode, "x")) // Support new 'x' flag; means O_EXCL.
@@ -277,6 +288,7 @@ static usage_t use_fopen(const char *mode) {
   else
     return WRITE;
 }
+#endif
 
 // Standards don't define how to take open() flags and determine if it's
 // read-only.  The following probably works everywhere, though:
@@ -1380,14 +1392,6 @@ WRAP(int, mkfifo, mkfifo, (const char* path, mode_t mode), \
 
 
 #if defined(__linux__) && !defined(__UCLIBC__)
-
-// Special stuff to handle GNU C library.
-// Technically, that's not the same as __linux__.
-
-// GNU C library doesn't normally let us redirect its internal
-// calls to open(), etc., so we have to wrap functions like fopen() ourselves:
-#define WRAP_USERS 1
-
 // Wrap stat*, lstat*, etc.  This is more complicated
 // due to the GNU C implementation of stat*, lstat*, etc.
 // *USERS* see the standard definitions:
