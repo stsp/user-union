@@ -44,6 +44,8 @@ echo "About to run tests!"
 export MALLOC_CHECK_=3
 
 # Run the main body of tests:
+./user-union -n -t -a "$overlay" "$underlay" -i /home -i /tmp -i /var/tmp \
+  "${srcdir}/testscript"
 ./user-union -t -a "$overlay" "$underlay" -i /home -i /tmp -i /var/tmp \
   "${srcdir}/testscript"
 if [ -f "$(user-union -P)/usr/bin/hello" ]
