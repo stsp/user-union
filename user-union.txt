@@ -17,8 +17,10 @@ libdir=XYZ
 
 OVERLAY_DIRECTORY=""
 UNDERLAY_DIRECTORY=""
+MOUNT_POINT=""
 DEFAULT_OVERLAY_DIRECTORY="/tmp/redir"
 DEFAULT_UNDERLAY_DIRECTORY="/"
+DEFAULT_MOUNT_POINT="/"
 DEFAULT_NONUNION="/tmp /var/tmp /home /Users"
 TESTMODE=n
 NOOP=n
@@ -37,16 +39,19 @@ add_branch() {
   if [ -n "$2" ]; then
     export USER_UNION_${MY_USER_UNION_CNT}_UNDERLAY_0="$2"
     export USER_UNION_${MY_USER_UNION_CNT}_UNDERLAY_CNT=1
-    export USER_UNION_${MY_USER_UNION_CNT}_MOUNT_POINT="$2"
+    DEFAULT_MOUNT_POINT="$2"
+  fi
+  if [ -n "$3" ]; then
+    export USER_UNION_${MY_USER_UNION_CNT}_MOUNT_POINT="$3"
   else
-    export USER_UNION_${MY_USER_UNION_CNT}_MOUNT_POINT="/"
+    export USER_UNION_${MY_USER_UNION_CNT}_MOUNT_POINT="$DEFAULT_MOUNT_POINT"
   fi
   MY_USER_UNION_CNT=`expr "$MY_USER_UNION_CNT" + 1`
 }
 
 add_pair() {
-  # $1 is the overlay, $2 is the underlay
-  add_branch "$1" "$2"
+  # $1 is the overlay, $2 is the underlay, $3 is the mount point
+  add_branch "$1" "$2" "$MOUNT_POINT"
   if ! mkdir -p "$1/.user-union/opendir/" "$1/.user-union/whitelist/"
   then
     echo "FAILURE: Cannot create directories in $1." >&2
@@ -119,6 +124,7 @@ while [ $# -gt 0 ] ; do
     -o) shift ; OVERLAY_DIRECTORY="$1" ; shift ;;
     -t) shift ; TESTMODE="y" ;;
     -u) shift ; UNDERLAY_DIRECTORY="$1" ; shift ;;
+    -k) shift ; MOUNT_POINT="$1" ; shift ;;
     -P) shift
         printf '%s\n' "$OVERRIDE_PREFIX_VALUE"
         exit 0 ;;
