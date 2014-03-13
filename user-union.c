@@ -363,111 +363,96 @@ static inline char *prepend_override_prefix(char *s) {
 // to eventually expand the code to support multiple overlays, and
 // this structure supports that.
 
-struct stringlist {
-  char *val;
-  struct stringlist *next;
-};
-
 struct branch {
   char *overlay;
-  struct stringlist *underlay;
+  char **underlay;
+  int num_underlays;
   char *mount_point;
-  struct branch *next;
 };
 
 static struct branch *branchlist;
+static int num_branches;
 
 // Set up branches by reading in the environment variable.
 static void initialize_branchlist(void) {
-  char *spec;
-  int len;
-  int tok_num;
+  char *endp;
+  int i, j, cnt;
   struct branch *current_branch;
-  struct branch *previous_branch = NULL;
-  struct stringlist *current_stringlist;
-  struct stringlist *previous_stringlist = NULL;
-  char *current_string;
-  spec = getenv("USER_UNION");
-  if (!spec || (spec[0] == '\0')) {
+  char var_name[128];
+  char *str = getenv("USER_UNION_CNT");
+  if (!str || (str[0] == '\0')) {
     fprintf(stderr,
-         "user-union: Warning. Environment variable USER_UNION not set.\n");
-    // This is intended to only be used when debugging (to simplify things):
-    spec="/tmp\n/var/tmp\n/home\n/Users\n/tmp/redir\t/";
+         "user-union: Warning. Environment variable USER_UNION_CNT not set.\n");
+    return;
   }
-  while (*spec) {
-    if ((*spec == ' ') | (*spec == '\n')) {
-      spec++;
+  cnt = strtol(str, &endp, 10);
+  if (*endp) {
+    fprintf(stderr,
+         "user-union: Warning. Environment variable USER_UNION_CNT=%s wrong.\n",
+         str);
+    return;
+  }
+
+  branchlist = malloc(sizeof(struct branch) * cnt);
+  num_branches = cnt;
+  for (i = 0; i < cnt; i++) {
+    int undl_cnt;
+    current_branch = branchlist + i;
+    snprintf(var_name, sizeof(var_name), "USER_UNION_%i_OVERLAY", i);
+    str = getenv(var_name);
+    if (!str || !str[0]) {
+      fprintf(stderr,
+         "user-union: FATAL. Environment variable %s not set.\n", var_name);
+      exit(1);
+    }
+    current_branch->overlay = str;
+
+    snprintf(var_name, sizeof(var_name), "USER_UNION_%i_MOUNT_POINT", i);
+    str = getenv(var_name);
+    if (!str || !str[0]) {
+      fprintf(stderr,
+         "user-union: FATAL. Environment variable %s not set.\n", var_name);
+      exit(1);
+    }
+    current_branch->mount_point = str;
+
+    snprintf(var_name, sizeof(var_name), "USER_UNION_%i_UNDERLAY_CNT", i);
+    str = getenv(var_name);
+    if (!str || !str[0]) {
+      current_branch->num_underlays = 0;
       continue;
     }
-    if (*spec == '\t') {
+    undl_cnt = strtol(str, &endp, 10);
+    if (*endp) {
       fprintf(stderr,
-         "user-union: FATAL.  A USER_UNION branch began with tab.\n");
+         "user-union: FATAL. Environment variable %s=%s wrong.\n",
+         var_name, str);
       exit(1);
     }
 
-    current_branch = malloc(sizeof(struct branch));
-    current_branch->next = NULL;
-    if (!branchlist) {
-      branchlist = current_branch;
-    } else {
-      previous_branch->next = current_branch;
-    }
-    previous_branch = current_branch;
-
-    current_stringlist = previous_stringlist = NULL;
-    tok_num = 0;
-    while (*spec && *spec != '\n') {
-      if (*spec == '\t') spec++;
-      len = strcspn(spec, "\t\n");
-      if (len <= 0) {
+    current_branch->underlay = malloc(sizeof(char*) * undl_cnt);
+    current_branch->num_underlays = undl_cnt;
+    for (j = 0; j < undl_cnt; j++) {
+      snprintf(var_name, sizeof(var_name), "USER_UNION_%i_UNDERLAY_%i", i, j);
+      str = getenv(var_name);
+      if (!str || !str[0]) {
         fprintf(stderr,
-         "user-union: FATAL.  USER_UNION misformatted.\n");
-        exit(1);
-      } else if (*spec != '/') {
-        fprintf(stderr,
-         "user-union: FATAL.  Directory %s fails to start with '/'.\n", spec);
-        exit(1);
-      } else if (len > 2 && spec[len-1]=='/') {
-        fprintf(stderr,
-         "user-union: FATAL.  Directory %s ends with '/'.\n", spec);
+           "user-union: FATAL. Environment variable %s not set.\n", var_name);
         exit(1);
       }
-      current_string = strndup(spec, len);
-      if (tok_num == 0) {
-        current_branch->overlay = current_string;
-      } else {
-        current_stringlist = malloc(sizeof(struct stringlist));
-        current_stringlist->next = NULL;
-        current_stringlist->val = current_string;
-        if (!previous_stringlist) {
-          current_branch->underlay = current_stringlist; // First list in branch.
-        } else {
-          previous_stringlist->next = current_stringlist;
-        }
-        previous_stringlist = current_stringlist;
-      }
-      spec += len;
-      tok_num++;
+      current_branch->underlay[j] = str;
     }
-    if (current_branch->underlay && current_branch->underlay->next) {
-        fprintf(stderr, "user-union: FATAL.  Cannot have >1 underlay.\n");
-        exit(1);
-    }
-    /* for now mount point matches last underlay */
-    if (current_stringlist)
-      current_branch->mount_point = strdup(current_stringlist->val);
-    else
-      current_branch->mount_point = strdup(current_branch->overlay);
   }
   // Complete.
 #ifdef DEBUG
   debug("Completed setting branchlist.  Results:\n");
-  for (current_branch = branchlist; current_branch;
-       current_branch = current_branch->next) {
+  for (i = 0; i < num_branches; i++) {
+    current_branch = branchlist + i;
     debug("Branch:\n");
-    for (current_stringlist = current_branch->list; current_stringlist;
-         current_stringlist = current_stringlist->next) {
-      debug("  Directory: %s\n", current_stringlist->val);
+    debug("  Overlay: %s\n", current_branch->overlay);
+    debug("  Mount point: %s\n", current_branch->mount_point);
+    for (j = 0; j < current_branch->num_underlays; j++) {
+      debug("  Underlay: %s\n", current_branch->underlay[j]);
     }
   }
 #endif
@@ -695,11 +680,11 @@ static char *redir_name(const char *pathname, int use) {
   char *canonicalized_pathname;
   bool overlay_region = false;
   int  len, best_match_len;
+  int  i, j;
   char *overlay_prefix, *underlay_prefix, *mount_point;
   char *overlay_name;   // Will be allocated.
   char *underlay_name;  // Will be allocated.
   struct branch *branch;
-  struct stringlist *mystringlist;
   bool is_whitelisted;
   char *whitelist_name;
   char *whitelist_name_full;
@@ -774,7 +759,8 @@ static char *redir_name(const char *pathname, int use) {
   overlay_prefix = underlay_prefix = NULL;
   best_match_len = -1;
   // debug("Looking for best match to %s\n", canonicalized_pathname);
-  for (branch = branchlist; branch; branch = branch->next) {
+  for (i = 0; i < num_branches; i++) {
+    branch = branchlist + i;
     // debug("Comparing with branch %s\n", branch->list->val);
     assert(branch->overlay);
     if (within(canonicalized_pathname, branch->mount_point)) {
@@ -795,13 +781,12 @@ static char *redir_name(const char *pathname, int use) {
     if (overlay_region) {
       int best_match_len_undl = 0;
       // debug(" Examining union beginning %s\n", branch->list->val);
-      for (mystringlist = branch->underlay; mystringlist;
-           mystringlist = mystringlist->next) {
+      for (j = 0; j < branch->num_underlays; j++) {
         char *tmp_name;
         int len_undl, len_pref;
-        len_pref = strlen(mystringlist->val);
+        len_pref = strlen(branch->underlay[j]);
         // debug("  Examining branch %s\n", mystringlist->val);
-        tmp_name = concat_dir(mystringlist->val,
+        tmp_name = concat_dir(branch->underlay[j],
                      canonicalized_pathname + skip(mount_point));
         len_undl = subpath_len(tmp_name);
         if (len_undl >= len_pref)
@@ -810,13 +795,13 @@ static char *redir_name(const char *pathname, int use) {
           len_undl = 0;
         free(tmp_name);
         if (len_undl >= best_match_len_undl) {
-          underlay_prefix = mystringlist->val;
+          underlay_prefix = branch->underlay[j];
           best_match_len_undl = len_undl;
           break;
         }
       }
       if (!underlay_prefix)
-        underlay_prefix = branch->underlay->val;
+        underlay_prefix = branch->underlay[0];
       // debug(" Setting underlay_prefix=%s\n", underlay_prefix);
     } else { // Non-union
       // debug(" Examining non-union %s\n", branch->list->val);

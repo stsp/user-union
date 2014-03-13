@@ -34,21 +34,33 @@ UNDERLAY_DIRECTORY=""
 DEFAULT_OVERLAY_DIRECTORY="/tmp/redir"
 DEFAULT_UNDERLAY_DIRECTORY="/"
 DEFAULT_NONUNION="/tmp${newline}/var/tmp${newline}/home${newline}/Users"
-MY_USER_UNION=""
 TESTMODE=n
 NOOP=n
 # FIXME: Put this value in one place in the source code
 OVERRIDE_PREFIX_VALUE="/./.././."
 
+if [ -n "$USER_UNION_CNT" ]; then
+  MY_USER_UNION_CNT_INIT=`expr "$USER_UNION_CNT" + 1`
+else
+  MY_USER_UNION_CNT_INIT=0
+fi
+MY_USER_UNION_CNT="$MY_USER_UNION_CNT_INIT"
+
 add_branch() {
-  [ -n "$MY_USER_UNION" ] && MY_USER_UNION="${MY_USER_UNION}${newline}"
-  MY_USER_UNION="${MY_USER_UNION}$1"
-  [ -n "$2" ] && MY_USER_UNION="${MY_USER_UNION}${tab}$2"
+  export USER_UNION_${MY_USER_UNION_CNT}_OVERLAY="$1"
+  if [ -n "$2" ]; then
+    export USER_UNION_${MY_USER_UNION_CNT}_UNDERLAY_0="$2"
+    export USER_UNION_${MY_USER_UNION_CNT}_UNDERLAY_CNT=1
+    export USER_UNION_${MY_USER_UNION_CNT}_MOUNT_POINT="$2"
+  else
+    export USER_UNION_${MY_USER_UNION_CNT}_MOUNT_POINT="/"
+  fi
+  MY_USER_UNION_CNT=`expr "$MY_USER_UNION_CNT" + 1`
 }
 
 add_pair() {
   # $1 is the overlay, $2 is the underlay
-  add_branch
+  add_branch "$1" "$2"
   if ! mkdir -p "$1/.user-union/opendir/" "$1/.user-union/whitelist/"
   then
     echo "FAILURE: Cannot create directories in $1." >&2
@@ -133,19 +145,14 @@ while [ $# -gt 0 ] ; do
   esac
 done
 
-if [ -z "$MY_USER_UNION" ] ; then
+if [ $MY_USER_UNION_CNT -eq $MY_USER_UNION_CNT_INIT ] ; then
  # Nothing set, create reasonable defaults.
- add_pair "${OVERLAY_DIRECTORY:-"$DEFAULT_OVERLAY_DIRECTORY"}" \
+add_pair "${OVERLAY_DIRECTORY:-"$DEFAULT_OVERLAY_DIRECTORY"}" \
           "${UNDERLAY_DIRECTORY:-"$DEFAULT_UNDERLAY_DIRECTORY"}"
  for i in ${DEFAULT_NONUNION}; do
    add_branch "$i"
  done
 fi
-
-if [ -n "$USER_UNION" ] ; then
-  MY_USER_UNION="$MY_USER_UNION${newline}$USER_UNION"
-fi
-
 
 # Find where library "la" file is
 if [ "$TESTMODE" = "n" ] ; then
@@ -210,9 +217,10 @@ else
   USE_DEFAULT_COMMAND=n
 fi
 
+export USER_UNION_CNT="$MY_USER_UNION_CNT"
+
 if [ $NOOP = "y" ] ; then
- printf '%s' "$MY_USER_UNION" | od -c
- echo
+ set | grep "^USER_UNION"
  exit 0
 fi
 
@@ -222,7 +230,6 @@ fi
 # We only set LD_PRELOAD and USER_UNION as the very last operations
 # before executing the command to be run.
 export LD_PRELOAD="${MY_LD_PRELOAD}"
-export USER_UNION="$MY_USER_UNION"
 
 case "$USE_DEFAULT_COMMAND" in
   y) # No command given, run $SHELL.
