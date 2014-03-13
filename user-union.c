@@ -800,7 +800,7 @@ static char *redir_name(const char *pathname, int use) {
       }
     }
     if (overlay_region) {
-      int best_match_len_undl = 0;
+      int best_match_len_undl = -1;
       // debug(" Examining union beginning %s\n", branch->list->val);
       for (j = 0; j < branch->num_underlays; j++) {
         char *tmp_name;
@@ -826,15 +826,7 @@ static char *redir_name(const char *pathname, int use) {
       // debug(" Setting underlay_prefix=%s\n", underlay_prefix);
     } else { // Non-union
       // debug(" Examining non-union %s\n", branch->list->val);
-      if (within(canonicalized_pathname, branch->overlay)) {
-        len = strlen(branch->overlay);
-        if (len > best_match_len) {
-          // This is better than any previous match, accept it.
-          overlay_region = false;
-          best_match_len = len;
-          // debug(" Best so far.  overlay_region=%d\n", overlay_region);
-        }
-      }
+      underlay_prefix = overlay_prefix;
     }
   }
   debug("redir_name: For canonicalized_pathname=%s, overlay_region=%d, overlay_prefix=%s, underlay_prefix=%s\n", canonicalized_pathname, overlay_region, overlay_prefix, underlay_prefix);
@@ -843,7 +835,7 @@ static char *redir_name(const char *pathname, int use) {
   // then, free it only if it got allocated.
   // That way we can speed absolute filenames that aren't redirected.
 
-  if (!overlay_region) {
+  if (best_match_len == -1) {
     free(canonicalized_pathname);
     debug("redir_name returning NULL undirected %s\n", pathname);
     return NULL; // Don't redirect.
