@@ -17,13 +17,6 @@ srcdir="$1"
 # Default to parent
 : "${srcdir:=..}"
 
-# Remove 'space', so filenames with spaces work well.
-IFS="$(printf '\n\t')"
-tab="$(printf '\t')"
-# The following is a standards-compliant trick to get newline into a variable:
-newline="$(printf '\nX')"
-newline="${newline%X}"
-
 startdir="$(pwd)"
 overlay="${startdir}/overlay"
 underlay="/"
