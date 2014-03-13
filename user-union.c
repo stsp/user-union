@@ -385,13 +385,25 @@ struct branch {
 static struct branch *branchlist;
 static int num_branches;
 
+static char whitelist_prefix[BIGBUF];
+
 // Set up branches by reading in the environment variable.
 static void initialize_branchlist(void) {
   char *endp;
   int i, j, cnt;
   struct branch *current_branch;
   char var_name[128];
-  char *str = getenv("USER_UNION_CNT");
+  char *str;
+
+  str = getenv("USER_UNION_PRIV_DIR");
+  if (!str || (str[0] == '\0')) {
+    fprintf(stderr,
+         "user-union: Warning. Environment variable USER_UNION_PRIV_DIR not set.\n");
+    return;
+  }
+  snprintf(whitelist_prefix, sizeof(whitelist_prefix), "%s/whitelist", str);
+
+  str = getenv("USER_UNION_CNT");
   if (!str || (str[0] == '\0')) {
     fprintf(stderr,
          "user-union: Warning. Environment variable USER_UNION_CNT not set.\n");
@@ -669,16 +681,13 @@ static mode_t my_file_lstat_mode(char *pathname) {
 //   rm DIRNAME ; touch DIRNAME
 // so we add a highly-unlikely suffix so we can differentiate between
 // "this is deleted" and "this is a subdirectory containing deleted things".
-#define WHITELIST_PREFIX "/.user-union/.whitelist"
 static char whitelist_suffix[] = ".*9%$7";
 
 // Generate whitelist name, return it malloc'ed (caller must free)
 // Name must be absolute without the overlay prefix.
 static char *gen_whitelist_name(const char *overlay_prefix,
                    const char *name) {
-  char *intermediate = concat_dir(WHITELIST_PREFIX, name);
-  char *final = concat_dir(overlay_prefix, intermediate);
-  free(intermediate);
+  char *final = concat_dir(whitelist_prefix, name);
   debug("gen_whitelist_name(\"%s\",\"%s\")->%s\n", overlay_prefix, name, final);
   return final;
 }

@@ -26,6 +26,7 @@ TESTMODE=n
 NOOP=n
 # FIXME: Put this value in one place in the source code
 OVERRIDE_PREFIX_VALUE="/./.././."
+MY_USER_UNION_PRIV_DIR="/tmp/redir/.user-union"
 
 if [ -n "$USER_UNION_CNT" ]; then
   MY_USER_UNION_CNT_INIT=`expr "$USER_UNION_CNT" + 1`
@@ -52,7 +53,8 @@ add_branch() {
 add_pair() {
   # $1 is the overlay, $2 is the underlay, $3 is the mount point
   add_branch "$1" "$2" "$MOUNT_POINT"
-  if ! mkdir -p "$1/.user-union/opendir/" "$1/.user-union/whitelist/"
+  if ! mkdir -p "$MY_USER_UNION_PRIV_DIR/opendir/" \
+      "$MY_USER_UNION_PRIV_DIR/whitelist/"
   then
     echo "FAILURE: Cannot create directories in $1." >&2
     exit 1
@@ -106,10 +108,6 @@ exit 0
 while [ $# -gt 0 ] ; do
   case "$1" in
     -a) shift
-        if ! mkdir -p "$1/.user-union" ; then
-          echo "FAILURE: Cannot write to $1 -- are arguments reversed?" >&2
-          exit 1
-        fi
         add_pair "$1" "$2"
         shift ; shift ;;
     -i) shift
@@ -209,6 +207,7 @@ else
   USE_DEFAULT_COMMAND=n
 fi
 
+[ -z "$USER_UNION_PRIV_DIR" ] && export USER_UNION_PRIV_DIR="$MY_USER_UNION_PRIV_DIR"
 export USER_UNION_CNT="$MY_USER_UNION_CNT"
 
 if [ $NOOP = "y" ] ; then
