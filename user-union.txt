@@ -28,6 +28,12 @@ NOOP=n
 OVERRIDE_PREFIX_VALUE="/./.././."
 MY_USER_UNION_PRIV_DIR="/tmp/redir/.user-union"
 
+if [ -n "$LD_PRELOAD" ]; then
+ MY_LD_PRELOAD="${LD_PRELOAD}"
+ # need to unset LD_PRELOAD so that it doesn't affect our sub-processes like expr
+ unset LD_PRELOAD
+fi
+
 if [ -n "$USER_UNION_CNT" ]; then
   MY_USER_UNION_CNT_INIT=`expr "$USER_UNION_CNT" + 1`
 else
@@ -183,17 +189,10 @@ fi
 
 # Figure out what LD_PRELOAD should become.  Don't add to LD_PRELOAD
 # if it's already there, so that user-union can be (mostly) nestable.
-if [ -z "$LD_PRELOAD" ] ; then
+if [ -n "$MY_LD_PRELOAD" ] ; then
+ MY_LD_PRELOAD="$MY_LD_PRELOAD $MY_USER_UNION_SO"
+else
  MY_LD_PRELOAD="$MY_USER_UNION_SO"
-elif ! printf "%s" "$LD_PRELOAD" | grep -Fq "${MY_USER_UNION_SO}" ; then
- # LD_PRELOAD has something, but not user-union.
- # If it has a space at the beginning or end, add the library there.
- # Else, add it to a "convenient side" (whichever fakeroot likes better).
- case "$LD_PRELOAD" in
-  (" "*) MY_LD_PRELOAD="${MY_USER_UNION_SO}${LD_PRELOAD}" ;;
-  (*" ") MY_LD_PRELOAD="${LD_PRELOAD}${MY_USER_UNION_SO}" ;;
-  (*)  MY_LD_PRELOAD="${LD_PRELOAD} ${MY_USER_UNION_SO}" ;;
- esac
 fi
 
 # We don't want to risk calling anything unexpected after we set
