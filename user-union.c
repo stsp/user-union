@@ -424,12 +424,10 @@ static void initialize_branchlist(void) {
     current_branch = branchlist + i;
     snprintf(var_name, sizeof(var_name), "USER_UNION_%i_OVERLAY", i);
     str = getenv(var_name);
-    if (!str || !str[0]) {
-      fprintf(stderr,
-         "user-union: FATAL. Environment variable %s not set.\n", var_name);
-      exit(1);
-    }
-    current_branch->overlay = str;
+    if (!str || !str[0])
+      current_branch->overlay = NULL;
+    else
+      current_branch->overlay = str;
 
     snprintf(var_name, sizeof(var_name), "USER_UNION_%i_MOUNT_POINT", i);
     str = getenv(var_name);
@@ -685,10 +683,9 @@ static char whitelist_suffix[] = ".*9%$7";
 
 // Generate whitelist name, return it malloc'ed (caller must free)
 // Name must be absolute without the overlay prefix.
-static char *gen_whitelist_name(const char *overlay_prefix,
-                   const char *name) {
+static char *gen_whitelist_name(const char *name) {
   char *final = concat_dir(whitelist_prefix, name);
-  debug("gen_whitelist_name(\"%s\",\"%s\")->%s\n", overlay_prefix, name, final);
+  debug("gen_whitelist_name(\"%s\")->%s\n", name, final);
   return final;
 }
 
@@ -699,7 +696,6 @@ static char *gen_whitelist_name(const char *overlay_prefix,
 
 static char *redir_name(const char *pathname, int use) {
   char *canonicalized_pathname;
-  bool overlay_region = false;
   int  len, best_match_len;
   int  i, j;
   char *overlay_prefix, *underlay_prefix, *mount_point;
@@ -776,30 +772,24 @@ static char *redir_name(const char *pathname, int use) {
   // Now examine branch information to find best match.
   // Track best match using best_match_len (longest one wins),
   // setting overlay_prefix as needed.
-  overlay_region = false;
   overlay_prefix = underlay_prefix = NULL;
   best_match_len = -1;
   // debug("Looking for best match to %s\n", canonicalized_pathname);
   for (i = 0; i < num_branches; i++) {
     branch = branchlist + i;
     // debug("Comparing with branch %s\n", branch->list->val);
-    assert(branch->overlay);
-    if (within(canonicalized_pathname, branch->mount_point)) {
-      len = strlen(branch->mount_point);
-      // debug(" len=%d, best_match_len=%d\n", len, best_match_len);
-      if (len > best_match_len) {
-        // This is better than any previous match, accept it.
-        overlay_region = !!branch->underlay;	// have both underlay and overlay
-        overlay_prefix = branch->overlay;
-        mount_point = branch->mount_point;
-        best_match_len = len;
-        // debug(" Best so far.  overlay_region=%d, overlay_prefix=%s, underlay_prefix=%s\n", overlay_region, overlay_prefix, underlay_prefix);
-      } else {
-        // not interested in this branch
-        continue;
-      }
-    }
-    if (overlay_region) {
+    if (!within(canonicalized_pathname, branch->mount_point))
+      continue;
+    len = strlen(branch->mount_point);
+    // debug(" len=%d, best_match_len=%d\n", len, best_match_len);
+    if (len <= best_match_len)
+      continue;
+    // This is better than any previous match, accept it.
+    overlay_prefix = branch->overlay;
+    mount_point = branch->mount_point;
+    best_match_len = len;
+    // debug(" Best so far.  overlay_prefix=%s, underlay_prefix=%s\n", overlay_prefix, underlay_prefix);
+    if (branch->underlay) {
       int best_match_len_undl = -1;
       // debug(" Examining union beginning %s\n", branch->list->val);
       for (j = 0; j < branch->num_underlays; j++) {
@@ -826,10 +816,11 @@ static char *redir_name(const char *pathname, int use) {
       // debug(" Setting underlay_prefix=%s\n", underlay_prefix);
     } else { // Non-union
       // debug(" Examining non-union %s\n", branch->list->val);
+      assert(overlay_prefix);
       underlay_prefix = overlay_prefix;
     }
   }
-  debug("redir_name: For canonicalized_pathname=%s, overlay_region=%d, overlay_prefix=%s, underlay_prefix=%s\n", canonicalized_pathname, overlay_region, overlay_prefix, underlay_prefix);
+  debug("redir_name: For canonicalized_pathname=%s, overlay_prefix=%s, underlay_prefix=%s\n", canonicalized_pathname, overlay_prefix, underlay_prefix);
 
   // TODO: Don't allocate canonicalized_pathname if we don't have to;
   // then, free it only if it got allocated.
@@ -841,22 +832,36 @@ static char *redir_name(const char *pathname, int use) {
     return NULL; // Don't redirect.
   }
 
-  underlay_name = concat_dir(underlay_prefix,
-                     canonicalized_pathname + skip(mount_point));
-  overlay_name = concat_dir(overlay_prefix,
-                     canonicalized_pathname + skip(mount_point));
-  whitelist_name = gen_whitelist_name(overlay_prefix,
-                     canonicalized_pathname + skip(mount_point));
-  free(canonicalized_pathname);
-
   // Whitelist handling.
+  whitelist_name = gen_whitelist_name(
+                     canonicalized_pathname + skip(mount_point));
   whitelist_name_full = malloc(strlen(whitelist_name) + strlen(whitelist_suffix) + 1);
   whitelist_name_full = concat(whitelist_name, whitelist_suffix);
+  // Determine if the file is whitelisted (marked as "deleted from underlay").
+  // Invariant: If the file is whitelisted, it is *NOT* present in the
+  // overlay. Thus, whitelisted files should be redirected to
+  // the *overlay*, so that the wrapped functions will correctly report that
+  // they don't exist.
+  is_whitelisted = my_file_exists(whitelist_name_full);
+
+  underlay_name = concat_dir(underlay_prefix,
+                     canonicalized_pathname + skip(mount_point));
+  if (overlay_prefix) {
+    overlay_name = concat_dir(overlay_prefix,
+                     canonicalized_pathname + skip(mount_point));
+  } else if (is_whitelisted || use == EXIST) {
+    overlay_prefix = whitelist_prefix;
+    overlay_name = strdup(whitelist_name);
+  } else {
+    overlay_name = NULL;
+  }
+  free(canonicalized_pathname);
+
   // If we are supposed to whitelist the pathname, let's do so.
   if (use == WHITELIST ) {
     // Create a whitelist entry for the overlay pathname
     int result;
-    if (my_file_exists(overlay_name)) {
+    if (overlay_name && my_file_exists(overlay_name)) {
       fprintf(stderr, "FAIL. Whitelisting %s but file %s exists!\n", whitelist_name, overlay_name);
     }
     // Only create a whitelist entry if it exists in the underlay.
@@ -880,19 +885,13 @@ static char *redir_name(const char *pathname, int use) {
     free(underlay_name);
     return NULL;
   }
-  // Determine if the file is whitelisted (marked as "deleted from underlay").
-  // Invariant: If the file is whitelisted, it is *NOT* present in the
-  // overlay. Thus, whitelisted files should be redirected to
-  // the *overlay*, so that the wrapped functions will correctly report that
-  // they don't exist.
-  is_whitelisted = my_file_exists(whitelist_name_full);
   free(whitelist_name);
   free(whitelist_name_full);
 
   debug("redir_name.  Overlay=%s  Underlay=%s\n", overlay_name, underlay_name);
 
   if (use == READ) { // Read-only filesystem object (simple override)
-    if (is_whitelisted || my_file_exists(overlay_name)) {
+    if (overlay_name && (is_whitelisted || my_file_exists(overlay_name))) {
       free(underlay_name);
       debug("redir_name 11 returning overlay name %s\n", overlay_name);
       return prepend_override_prefix(overlay_name);
@@ -902,7 +901,7 @@ static char *redir_name(const char *pathname, int use) {
       return prepend_override_prefix(underlay_name);
     }
   } else if (use == PREFER_UNDERLAY) { // Like READ but use underlay if exists.
-    if (!is_whitelisted && my_file_exists(underlay_name)) {
+    if (!overlay_name || (!is_whitelisted && my_file_exists(underlay_name))) {
       free(overlay_name);
       debug("redir_name 12 returning underlay name %s\n", underlay_name);
       return prepend_override_prefix(underlay_name);
@@ -913,12 +912,15 @@ static char *redir_name(const char *pathname, int use) {
     }
   } else if (use == EXCLUSIVE) { // Exclusively-create filesystem object:
     debug("O_EXCL!\n");
-    if (my_file_exists(overlay_name)) {
+    if (overlay_name && my_file_exists(overlay_name)) {
       // It exists in overlay. Return the overlay name, it'll fail.
       debug("Overlay already exists!\n");
       free(underlay_name);
       debug("redir_name 21 returning underlay name %s\n", overlay_name);
       return prepend_override_prefix(overlay_name);
+    } else if (!overlay_name) {
+      free(underlay_name);
+      return prepend_override_prefix(strdup("/dev/null"));	// provoke failure
     } else if (!is_whitelisted && my_file_exists(underlay_name)) {
       // It exists in underlay. Return the underlay name, it'll fail.
       debug("Underlay already exists!\n");
@@ -974,6 +976,8 @@ static char *redir_name(const char *pathname, int use) {
     return NULL;
   } else if (use == WRITE) { // Write (and maybe read) filesystem object
     debug("read-write!\n");
+    if (!overlay_name)
+      return prepend_override_prefix(strdup("/dev/null"));	// FIXME!
     if (!is_whitelisted && !my_file_exists(overlay_name) &&
         my_file_exists(underlay_name)) {
       mode_t underlay_mode = my_file_lstat_mode(underlay_name);
