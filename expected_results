@@ -1,7 +1,4 @@
 .   d 
-./.user-union   d 
-./.user-union/opendir   d 
-./.user-union/whitelist   d 
 ./usr/bin/current_directory   f 9 ac2ff1f87664a01592d8
 ./usr/bin   d 
 ./usr/bin/hello2   f 6 09f7e02f1290be211da7
