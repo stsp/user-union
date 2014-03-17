@@ -64,8 +64,13 @@ add_branch() {
 }
 
 add_pair() {
-  # $1 is the overlay, $2 is the underlay, $3 is the mount point
+  # $1 is the overlay, $2 is the underlay
   add_branch "$1" "$2" "$MOUNT_POINT"
+}
+
+add_triplet() {
+  # $1 is the overlay, $2 is the underlay, $3 is the mount point
+  add_branch "$1" "$2" "$3"
 }
 
 usage() {
@@ -131,6 +136,9 @@ while [ $# -gt 0 ] ; do
     -t) shift ; TESTMODE="y" ;;
     -u) shift ; UNDERLAY_DIRECTORY="$1" ; shift ;;
     -k) shift ; MOUNT_POINT="$1" ; shift ;;
+    -l) shift
+        add_triplet "$1" "$2" "$3"
+        shift ; shift ; shift ;;
     -P) shift
         printf '%s\n' "$OVERRIDE_PREFIX_VALUE"
         exit 0 ;;
