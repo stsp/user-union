@@ -117,6 +117,7 @@ while [ $# -gt 0 ] ; do
     -a) shift
         add_pair "$1" "$2"
         shift ; shift ;;
+    -d) shift ; export USER_UNION_DEBUG=1 ;;
     -i) shift
         add_branch "$1"
         shift ;;

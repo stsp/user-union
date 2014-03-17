@@ -171,12 +171,9 @@
 // We're doing a lot of subterfugue, so symbol visibility needs to be
 // reduced to *only* the symbols we are intentionally overriding.
 
-// #define DEBUG 1
-#ifdef DEBUG
-#define debug(...) fprintf(stderr, "user-union: " __VA_ARGS__)
-#else
-#define debug(format, args...) do { } while (0)
-#endif
+static int debug = 0;
+#define debug(...) do if (debug) fprintf(stderr, "user-union: " __VA_ARGS__); \
+    while (0)
 
 #if defined(__linux__) && !defined(__UCLIBC__)
 
@@ -402,6 +399,18 @@ static void initialize_branchlist(void) {
     return;
   }
   snprintf(whitelist_prefix, sizeof(whitelist_prefix), "%s/whitelist", str);
+
+  str = getenv("USER_UNION_DEBUG");
+  if (str && str[0]) {
+    cnt = strtol(str, &endp, 10);
+    if (*endp) {
+      fprintf(stderr,
+         "user-union: Warning. Environment variable USER_UNION_DEBUG=%s wrong.\n",
+         str);
+    } else {
+      debug = cnt;
+    }
+  }
 
   str = getenv("USER_UNION_CNT");
   if (!str || (str[0] == '\0')) {
