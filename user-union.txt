@@ -34,6 +34,13 @@ if [ -n "$LD_PRELOAD" ]; then
  unset LD_PRELOAD
 fi
 
+if ! mkdir -p "$MY_USER_UNION_PRIV_DIR/opendir/" \
+  "$MY_USER_UNION_PRIV_DIR/whitelist/"
+then
+  echo "FAILURE: Cannot create directories in $1." >&2
+  exit 1
+fi
+
 if [ -n "$USER_UNION_CNT" ]; then
   MY_USER_UNION_CNT_INIT=`expr "$USER_UNION_CNT" + 1`
 else
@@ -59,12 +66,6 @@ add_branch() {
 add_pair() {
   # $1 is the overlay, $2 is the underlay, $3 is the mount point
   add_branch "$1" "$2" "$MOUNT_POINT"
-  if ! mkdir -p "$MY_USER_UNION_PRIV_DIR/opendir/" \
-      "$MY_USER_UNION_PRIV_DIR/whitelist/"
-  then
-    echo "FAILURE: Cannot create directories in $1." >&2
-    exit 1
-  fi
 }
 
 usage() {
