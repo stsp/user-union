@@ -750,8 +750,11 @@ static char *redir_name(const char *pathname, int use) {
   // TODO: If we're given relative name, *AND* we have an *at function,
   // we should use the *at function's file descriptor as the starting point.
   // Use "is_at" and "at_fd".
-  if (pathname[0] == '/') {
-    canonicalized_pathname = strdup(pathname);
+  i = 0;
+  while (pathname[i] == '/')
+    i++;
+  if (i > 0) {
+    canonicalized_pathname = strdup(pathname + i - 1);
   } else {
     char current_directory[BIGBUF];
     int len;
