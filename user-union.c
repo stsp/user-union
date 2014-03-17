@@ -707,6 +707,7 @@ static char *redir_name(const char *pathname, int use) {
   char *canonicalized_pathname;
   int  len, best_match_len;
   int  i, j;
+  int exist_creat;
   char *overlay_prefix, *underlay_prefix, *mount_point;
   char *overlay_name;   // Will be allocated.
   char *underlay_name;  // Will be allocated.
@@ -858,10 +859,18 @@ static char *redir_name(const char *pathname, int use) {
 
   underlay_name = concat_dir(underlay_prefix,
                      canonicalized_pathname + skip(mount_point));
-  if (overlay_prefix) {
+  exist_creat = 0;
+  if (overlay_prefix && use == EXIST) {
     overlay_name = concat_dir(overlay_prefix,
                      canonicalized_pathname + skip(mount_point));
-  } else if (is_whitelisted || use == EXIST) {
+    if (!my_file_exists(overlay_name))
+      exist_creat = 1;		// will create file
+    free(overlay_name);
+  }
+  if (overlay_prefix && !exist_creat) {
+    overlay_name = concat_dir(overlay_prefix,
+                     canonicalized_pathname + skip(mount_point));
+  } else if (is_whitelisted || exist_creat) {
     overlay_prefix = whitelist_prefix;
     overlay_name = strdup(whitelist_name);
   } else {
