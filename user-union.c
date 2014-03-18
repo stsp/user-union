@@ -1528,6 +1528,10 @@ WRAP(int, stat64, _stat$INODE64, (const char* path, struct stat64* sb), (path, s
 WRAP(int, stat, stat, (const char* path, struct stat* sb), (path, sb), READ,)
 WRAP(int, lstat, lstat, (const char* path, struct stat* sb), (path, sb), READ,)
 
+#if defined (__UCLIBC__)
+WRAP(int, stat64, stat64, (const char* path, struct stat64* sb), (path, sb), READ,)
+WRAP(int, lstat64, lstat64, (const char* path, struct stat64* sb), (path, sb), READ,)
+#endif
 
 #endif
 
