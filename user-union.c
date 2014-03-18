@@ -993,7 +993,7 @@ static char *redir_name(const char *pathname, int use) {
     // }
     free(overlay_name);
     free(underlay_name);
-    debug("redir_name 70 returning underlay name %s\n", underlay_name);
+    debug("redir_name 70 returning NULL for opendir\n");
     return NULL;
   } else if (use == WRITE) { // Write (and maybe read) filesystem object
     debug("read-write!\n");
