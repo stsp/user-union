@@ -126,6 +126,10 @@ while [ $# -gt 0 ] ; do
     -i) shift
         add_branch "$1"
         shift ;;
+    -k) shift ; MOUNT_POINT="$1" ; shift ;;
+    -l) shift
+        add_triplet "$1" "$2" "$3"
+        shift ; shift ; shift ;;
     -m) shift
         anon_overlay="$(mktemp -d)"
         add_pair "$anon_overlay" "$1"
@@ -133,12 +137,15 @@ while [ $# -gt 0 ] ; do
         shift ;;
     -n) shift ; NOOP=y ;;
     -o) shift ; OVERLAY_DIRECTORY="$1" ; shift ;;
+    -p) shift
+        if [ -z "$MY_LD_PRELOAD" ]; then
+          MY_LD_PRELOAD="$1"
+        else
+          MY_LD_PRELOAD="$MY_LD_PRELOAD $1"
+        fi
+        shift ;;
     -t) shift ; TESTMODE="y" ;;
     -u) shift ; UNDERLAY_DIRECTORY="$1" ; shift ;;
-    -k) shift ; MOUNT_POINT="$1" ; shift ;;
-    -l) shift
-        add_triplet "$1" "$2" "$3"
-        shift ; shift ; shift ;;
     -P) shift
         printf '%s\n' "$OVERRIDE_PREFIX_VALUE"
         exit 0 ;;
