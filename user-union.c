@@ -991,6 +991,17 @@ static char *redir_name(const char *pathname, int use) {
     // }
     // while ((dp = readdir (dir)) != NULL) {
     // }
+    /* HACK, for now */
+    if (my_file_exists(overlay_name)) {
+      free(underlay_name);
+      debug("redir_name 160 returning overlay name %s\n", overlay_name);
+      return prepend_override_prefix(overlay_name);
+    }
+    if (my_file_exists(underlay_name)) {
+      free(overlay_name);
+      debug("redir_name 161 returning overlay name %s\n", underlay_name);
+      return prepend_override_prefix(underlay_name);
+    }
     free(overlay_name);
     free(underlay_name);
     debug("redir_name 70 returning NULL for opendir\n");
