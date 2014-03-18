@@ -175,7 +175,7 @@ static int debug = 0;
 #define debug(...) do if (debug) fprintf(stderr, "user-union: " __VA_ARGS__); \
     while (0)
 
-#if defined(__linux__) && !defined(__UCLIBC__)
+#if defined(__linux__)
 
 // Special stuff to handle GNU C library.
 // Technically, that's not the same as __linux__.
