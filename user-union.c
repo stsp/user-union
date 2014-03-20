@@ -139,6 +139,7 @@
 #include <assert.h>
 #include <utime.h>
 #include <sys/time.h>
+#include <sys/statvfs.h>
 // For opendir():
 #include <dirent.h>
 #include <assert.h>
@@ -1391,9 +1392,14 @@ WRAP(int, chown, chown, (const char* path, uid_t owner, gid_t group), \
 WRAP(int, lchown, lchown, (const char* path, uid_t owner, gid_t group), \
      (path, owner, group), WRITE,)
 
+WRAP(int, statvfs, statvfs, (const char* path, struct statvfs *buf), \
+     (path, buf), READ,)
+
 WRAP64(int, unlink, unlink, (const char* path), (path), EXIST, whitelist_if_error_free(result>=0, old_pathname))
 WRAP64(int, unlinkat, unlinkat, (int dirfd, const char* path, int flags), (dirfd, path, flags), EXIST|AT(dirfd),
      whitelist_if_error_free(result>=0,old_pathname))
+WRAP(int, statvfs64, statvfs64, (const char* path, struct statvfs64 *buf), \
+     (path, buf), READ,)
 
 
 // We can only create SOME kinds of nodes, but we can try.
