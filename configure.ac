@@ -59,5 +59,9 @@ AC_CHECK_FUNCS([euidaccess getcwd strchr strcspn strdup strstr])
 
 CFLAGS="$CFLAGS -Wall"
 
+AC_ARG_ENABLE(debug, 
+  AC_HELP_STRING([--enable-debug], [compile with debug support]),
+  CFLAGS="$CFLAGS -ggdb3")
+
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
