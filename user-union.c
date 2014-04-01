@@ -534,6 +534,7 @@ static int my_open64(const char *path, int flags, mode_t mode);
 static int my_mkdir(const char *pathname, mode_t mode);
 static int my_unlink(const char *path);
 static int my_lstat(const char *path, struct stat *buf);
+static ssize_t my_readlink(const char *path, char *buf, size_t bufsiz);
 #if 0
 static DIR *my_opendir(const char *name);
 #endif
@@ -704,7 +705,8 @@ static char *gen_whitelist_name(const char *name) {
 // The returned pointer (if not null) must be free()d by caller.
 // If it's not to be redirected, return NULL.
 
-static char *redir_name(const char *pathname, int use) {
+static char *__redir_name(const char *pathname, int use)
+{
   char *canonicalized_pathname;
   int  len, best_match_len;
   int  i, j;
@@ -722,15 +724,6 @@ static char *redir_name(const char *pathname, int use) {
 #endif
 
   debug("redir_name begin: path=%s usage=%d\n", pathname, use);
-
-  if (!pathname) return NULL; // Shouldn't happen.
-
-  // If the special "override_prefix" is present, and we're using it,
-  // return immediately.  This helps us guard against intercepting the
-  // same pathname multiple times (in most cases it doesn't matter,
-  // but this seems safer).
-  if (use_override_prefix && within(pathname, override_prefix))
-    return NULL;
 
   // Extract the primary use.  The "use" parameter is int,
   // not type "usage_t", because "use" is an OR'ed value that
@@ -1072,6 +1065,43 @@ static char *redir_name(const char *pathname, int use) {
   }
 }
 
+static char *redir_name(const char *pathname, int use)
+{
+  char *r_path;
+  const char *f_path;
+  struct stat mystats;
+  int result;
+
+  if (!pathname) return NULL; // Shouldn't happen.
+
+  // If the special "override_prefix" is present, and we're using it,
+  // return immediately.  This helps us guard against intercepting the
+  // same pathname multiple times (in most cases it doesn't matter,
+  // but this seems safer).
+  if (use_override_prefix && within(pathname, override_prefix))
+    return NULL;
+
+  r_path = __redir_name(pathname, use);
+  f_path = r_path ?: pathname;
+  result = my_lstat(f_path, &mystats);
+  if (result == -1)
+    return r_path;
+  if (S_ISLNK(mystats.st_mode)) {
+    char buf[BIGBUF];
+    char *r_path1;
+    ssize_t n;
+    n = my_readlink(f_path, buf, BIGBUF);
+    if (n <= 0 || n >= BIGBUF)
+      return r_path;
+    buf[n] = 0;
+    r_path1 = __redir_name(buf, use);
+    if (r_path1) {
+      free(r_path);
+      r_path = r_path1;
+    }
+  }
+  return r_path;
+}
 
 // Quickly calculate euidaccess as if we're root.
 // If the file exists somewhere, we'll return 0; else return -1.
@@ -1642,6 +1672,8 @@ MAKE_MY_FUNCTION(int, mkdir,  (const char *path, mode_t mode), \
 MAKE_MY_FUNCTION(int, lstat,  (const char *path, struct stat *buf), \
                               (path, buf))
 MAKE_MY_FUNCTION(int, unlink, (const char *path), (path))
+MAKE_MY_FUNCTION(ssize_t, readlink, (const char *path, char *buf, \
+                              size_t bufsiz), (path, buf, bufsiz))
 #if 0
 MAKE_MY_FUNCTION(DIR *, opendir, (const char *path), (path))
 #endif
