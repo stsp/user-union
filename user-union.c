@@ -1592,10 +1592,10 @@ WRAP(int, lstat64, lstat64, (const char* path, struct stat64* sb), (path, sb), R
 // not normally let us override the open() inside fopen, so we must
 // do it ourselves.
 
-WRAP(FILE *, fopen,   fopen,   (const char *path, const char *mode), \
+WRAP64(FILE *, fopen,   fopen,   (const char *path, const char *mode), \
                     (path, mode), use_fopen(mode), unwhitelist_if_error_free(result!=NULL, old_pathname))
 
-WRAP(FILE *, freopen, freopen, \
+WRAP64(FILE *, freopen, freopen, \
        (const char *path, const char *mode, FILE *stream), \
                      (path, mode, stream), use_fopen(mode),unwhitelist_if_error_free(result!=NULL, old_pathname))
 
