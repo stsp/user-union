@@ -294,12 +294,14 @@ static usage_t use_fopen(const char *mode) {
 
 // Convert open() flags to usage flags
 static usage_t use_open(int flags) {
+  if (flags & O_CREAT) {
+    if (flags & O_EXCL)
+      return EXCLUSIVE;
+    return WRITE;
+  }
   if (FLAG_READONLY(flags))
     return READ;
-  else if (flags & O_EXCL)
-    return EXCLUSIVE;
-  else
-    return WRITE;
+  return WRITE;
 }
 
 // The redir_name "use" parameter is an "or" of usage_t and possibly
