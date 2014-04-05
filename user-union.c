@@ -1081,6 +1081,12 @@ static char *redir_name(const char *pathname, int use)
   if (use_override_prefix && within(pathname, override_prefix))
     return NULL;
 
+
+  // FIXME: The following partially implements symlinks support.
+  // For every symlink we do readlink(), and try to redirect the content.
+  // This is not a precise emulation, as programs will see the
+  // original files instead of symlinks even when doing stat().
+
   r_path = __redir_name(pathname, use);
   f_path = r_path ?: pathname;
   result = my_lstat(f_path, &mystats);
