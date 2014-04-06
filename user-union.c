@@ -1461,7 +1461,10 @@ WRAP(int, mkfifo, mkfifo, (const char* path, mode_t mode), \
      (path, mode), WRITE, \
        unwhitelist_if_error_free(result>=0, old_pathname))
 
-
+WRAP(ssize_t, getxattr, getxattr, (const char *path, const char *name, \
+     void *value, size_t size), (path, name, value, size), READ,)
+WRAP(ssize_t, lgetxattr, lgetxattr, (const char *path, const char *name, \
+     void *value, size_t size), (path, name, value, size), READ,)
 
 // TODO: Need to wrap many more, including:
 // opendir::void *:const char *pathname
