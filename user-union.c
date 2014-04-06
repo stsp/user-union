@@ -215,14 +215,12 @@ static char *concat(const char *s1, const char *s2) {
 // another pointer to s1, you won't be able to free s1 later.
 static char *concat_dir(const char *s1, const char *s2) {
   size_t strlen_s1 = strlen(s1);
-  char *new = malloc(strlen_s1+strlen(s2)+2);
+  char *new = malloc(strlen_s1+strlen(s2)+1);
   debug("concat_dir(%s,%s)", s1, s2);
   strcpy(new,s1);
   if ((strlen_s1 > 0) && (s1[strlen_s1-1] ==  '/') && (s2[0] == '/'))
     s2++;
-  if ((strlen_s1 > 0) && (s1[strlen_s1-1] !=  '/') && (s2[0] != '/'))
-    strcat(new, "/");
-  strcat(new,s2);
+  strcpy(new+strlen_s1,s2);
   debug("->%s\n", new);
   return new;
 }
@@ -1125,7 +1123,11 @@ static char *redir_name(const char *pathname, int use)
     if (buf[0] != '/' && pathname[0] == '/') {
       /* handle relative symlinks */
       char *f_path1 = strdup(pathname);
-      char *f_path2 = concat_dir(dirname(f_path1), buf);
+      char *d_name = dirname(f_path1);
+      char *f_path2;
+      memmove(buf + 1, buf, strlen(buf) + 1);
+      buf[0] = '/';
+      f_path2 = concat_dir(d_name, buf);
       free(f_path1);
       strcpy(buf, f_path2);
       free(f_path2);
@@ -1136,6 +1138,7 @@ static char *redir_name(const char *pathname, int use)
     free(r_path);
     r_path = redir_symlink(r_path1 + skip(override_prefix));
     free(r_path1);
+    r_path = prepend_override_prefix(r_path);
   }
   return r_path;
 }
