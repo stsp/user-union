@@ -540,6 +540,7 @@ static int my_mkdir(const char *pathname, mode_t mode);
 static int my_unlink(const char *path);
 static int my_lstat(const char *path, struct stat *buf);
 static ssize_t my_readlink(const char *path, char *buf, size_t bufsiz);
+static int my_symlink(const char *oldpath, const char *newpath);
 #if 0
 static DIR *my_opendir(const char *name);
 #endif
@@ -1070,6 +1071,31 @@ static char *__redir_name(const char *pathname, int use)
   }
 }
 
+static char *redir_symlink(const char *pathname)
+{
+  char buf[BIGBUF];
+  ssize_t n;
+  int rc;
+  char *whitelist_name = gen_whitelist_name(pathname);
+  n = my_readlink(whitelist_name, buf, BIGBUF);
+  if (n > 0 && n < BIGBUF) {
+    buf[n] = 0;
+    /* symlink exists */
+    if (strcmp(pathname, buf) == 0)
+      return whitelist_name;
+  }
+  /* remove old symlink, if exists */
+  my_unlink(whitelist_name);
+  make_parents_of(whitelist_name);
+  rc = my_symlink(pathname, whitelist_name);
+  if (rc == -1) {
+    fprintf(stderr, "FAIL: symlink creation failed at %s\n", whitelist_name);
+    free(whitelist_name);
+    return NULL;
+  }
+  return whitelist_name;
+}
+
 static char *redir_name(const char *pathname, int use)
 {
   char *r_path;
@@ -1114,10 +1140,11 @@ static char *redir_name(const char *pathname, int use)
       free(f_path2);
     }
     r_path1 = __redir_name(buf, use);
-    if (r_path1) {
-      free(r_path);
-      r_path = r_path1;
-    }
+    if (!r_path1)
+      return r_path;
+    free(r_path);
+    r_path = redir_symlink(r_path1 + skip(override_prefix));
+    free(r_path1);
   }
   return r_path;
 }
@@ -1382,18 +1409,12 @@ WRAP(int, chdir, chdir, (const char *path), (path), PREFER_UNDERLAY,)
 WRAP(ssize_t, readlink, readlink, (const char *path, char *buf, size_t bufsiz), (path, buf, bufsiz), READ,)
 WRAP(ssize_t, readlinkat, readlinkat, (int dirfd, const char *path, char *buf, size_t bufsiz), (dirfd, path, buf, bufsiz), READ|AT(dirfd),)
 
-// "symlink" gets wrapped specially.
-// If old path is an absolute pathname inside the overlay, we'll
-// change it to be an absolute value in the underlay; otherwise,
-// we leave it unchanged.  That way, if a routine learns of
-// the underlay's location, and uses it to calculate a symlink,
-// the symlink will still be correct.
-TWO_WRAP(int, symlink, symlink, (const char *path, const char *path2), \
-       (path, path2), SWITCH_UNDERLAY, EXCLUSIVE, \
-       unwhitelist_if_error_free(result>=0, old_pathname2))
-TWO_WRAP(int, symlinkat, symlinkat, (const char *path, int newdfd, const char *path2), \
-       (path, newdfd, path2), SWITCH_UNDERLAY, EXCLUSIVE|AT(newdfd), \
-       unwhitelist_if_error_free(result>=0, old_pathname2))
+WRAP(int, symlink, symlink, (const char *oldpath, const char *path), \
+       (oldpath, path), EXCLUSIVE, \
+       unwhitelist_if_error_free(result>=0, old_pathname))
+WRAP(int, symlinkat, symlinkat, (const char *oldpath, int newdfd, const char *path), \
+       (oldpath, newdfd, path), EXCLUSIVE|AT(newdfd), \
+       unwhitelist_if_error_free(result>=0, old_pathname))
 
 // We can't link across filesystems, so on some environments this will fail:
 TWO_WRAP(int, link, link, (const char *path, const char *path2), \
@@ -1696,6 +1717,8 @@ MAKE_MY_FUNCTION(int, lstat,  (const char *path, struct stat *buf), \
 MAKE_MY_FUNCTION(int, unlink, (const char *path), (path))
 MAKE_MY_FUNCTION(ssize_t, readlink, (const char *path, char *buf, \
                               size_t bufsiz), (path, buf, bufsiz))
+MAKE_MY_FUNCTION(int, symlink, (const char *oldpath, const char *path), \
+                              (oldpath, path))
 #if 0
 MAKE_MY_FUNCTION(DIR *, opendir, (const char *path), (path))
 #endif
