@@ -99,7 +99,7 @@ Where options are:
             there  are no other commands determining what to overlay; see
             the description.
 
-  -r OV MP  Non-underlayed mount. OV path is becaming accessable through
+  -r OV MP  No-underlay mount. Make path OV accessible through
             the mount point MP.
 
   -t        Test mode. Use current directory’s  "user-union.so"  library,
@@ -108,10 +108,14 @@ Where options are:
   -u UN     Set  the  default underlay directory to UN which is used when
             there are no other commands determining what to overlay;  see
             the description.
+
   -P        Report the override prefix on a line and return.
-            The override prefix disables user-union redirection for this name.
+            The override prefix disables user-union redirection of a pathname.
             Prepend the override prefix to an absolute pathname to
             refer to the actual pathname without redirection.
+            (User-union internally uses the override prefix to prevent the
+            "looping" problems of past systems. This mechanism is also
+            sometimes useful if you need to directly control pathnames.)
 USAGE
 exit 0
 }
