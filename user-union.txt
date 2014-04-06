@@ -49,6 +49,7 @@ fi
 MY_USER_UNION_CNT="$MY_USER_UNION_CNT_INIT"
 
 add_branch() {
+  # $1 is the overlay, $2 is the underlay, $3 is the mount point
   export USER_UNION_${MY_USER_UNION_CNT}_OVERLAY="$1"
   if [ -n "$2" ]; then
     export USER_UNION_${MY_USER_UNION_CNT}_UNDERLAY_0="$2"
@@ -66,11 +67,6 @@ add_branch() {
 add_pair() {
   # $1 is the overlay, $2 is the underlay
   add_branch "$1" "$2" "$MOUNT_POINT"
-}
-
-add_triplet() {
-  # $1 is the overlay, $2 is the underlay, $3 is the mount point
-  add_branch "$1" "$2" "$3"
 }
 
 usage() {
@@ -135,7 +131,7 @@ while [ $# -gt 0 ] ; do
         shift ;;
     -k) shift ; MOUNT_POINT="$1" ; shift ;;
     -l) shift
-        add_triplet "$1" "$2" "$3"
+        add_branch "$1" "$2" "$3"
         shift ; shift ; shift ;;
     -m) shift
         anon_overlay="$(mktemp -d)"
@@ -152,7 +148,7 @@ while [ $# -gt 0 ] ; do
         fi
         shift ;;
     -r) shift
-        add_triplet "$1" "" "$2"
+        add_branch "$1" "" "$2"
         shift ; shift ;;
     -t) shift ; TESTMODE="y" ;;
     -u) shift ; UNDERLAY_DIRECTORY="$1" ; shift ;;
