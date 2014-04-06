@@ -1106,8 +1106,6 @@ static char *redir_name(const char *pathname, int use)
   if (is_readlink)
     use = READ | (use & ~USAGE_T_MASK);
   r_path = __redir_name(pathname, use);
-  if (is_readlink)
-    return r_path;
   f_path = r_path ?: pathname;
   result = my_lstat(f_path, &mystats);
   if (result == -1)
@@ -1120,6 +1118,19 @@ static char *redir_name(const char *pathname, int use)
     if (n <= 0 || n >= BIGBUF)
       return r_path;
     buf[n] = 0;
+    if (buf[0] == '/' && my_file_exists(buf)) {
+      if (is_readlink) {
+        /* we don't yet support readlink for symlinks that were created
+         * without user-union, and are containing the absolute, real path.
+         * The (partial) solution may be to create a replacement symlink
+         * in which the dirname() from "buf" is replaced with dirname()
+         * from "pathname" */
+        debug("FAIL: unsupported readlink redirection %s\n", buf);
+      }
+      return r_path;
+    }
+    if (is_readlink)
+      return r_path;
     if (buf[0] != '/' && pathname[0] == '/') {
       /* handle relative symlinks */
       char *f_path1 = strdup(pathname);
