@@ -99,6 +99,9 @@ Where options are:
             there  are no other commands determining what to overlay; see
             the description.
 
+  -r OV MP  Non-underlayed mount. OV path is becaming accessable through
+            the mount point MP.
+
   -t        Test mode. Use current directory’s  "user-union.so"  library,
             instead of searching the usual library directories.
 
@@ -144,6 +147,9 @@ while [ $# -gt 0 ] ; do
           MY_LD_PRELOAD="$MY_LD_PRELOAD $1"
         fi
         shift ;;
+    -r) shift
+        add_triplet "$1" "" "$2"
+        shift ; shift ;;
     -t) shift ; TESTMODE="y" ;;
     -u) shift ; UNDERLAY_DIRECTORY="$1" ; shift ;;
     -P) shift
