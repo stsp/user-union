@@ -143,6 +143,7 @@
 // For opendir():
 #include <dirent.h>
 #include <assert.h>
+#include <libgen.h>
 
 // For dlsym
 #if HAVE_DLFCN_H
@@ -214,12 +215,14 @@ static char *concat(const char *s1, const char *s2) {
 // another pointer to s1, you won't be able to free s1 later.
 static char *concat_dir(const char *s1, const char *s2) {
   size_t strlen_s1 = strlen(s1);
-  char *new = malloc(strlen_s1+strlen(s2)+1);
+  char *new = malloc(strlen_s1+strlen(s2)+2);
   debug("concat_dir(%s,%s)", s1, s2);
   strcpy(new,s1);
   if ((strlen_s1 > 0) && (s1[strlen_s1-1] ==  '/') && (s2[0] == '/'))
     s2++;
-  strcpy(new+strlen_s1,s2);
+  if ((strlen_s1 > 0) && (s1[strlen_s1-1] !=  '/') && (s2[0] != '/'))
+    strcat(new, "/");
+  strcat(new,s2);
   debug("->%s\n", new);
   return new;
 }
@@ -1102,6 +1105,14 @@ static char *redir_name(const char *pathname, int use)
     if (n <= 0 || n >= BIGBUF)
       return r_path;
     buf[n] = 0;
+    if (buf[0] != '/' && pathname[0] == '/') {
+      /* handle relative symlinks */
+      char *f_path1 = strdup(pathname);
+      char *f_path2 = concat_dir(dirname(f_path1), buf);
+      free(f_path1);
+      strcpy(buf, f_path2);
+      free(f_path2);
+    }
     r_path1 = __redir_name(buf, use);
     if (r_path1) {
       free(r_path);
