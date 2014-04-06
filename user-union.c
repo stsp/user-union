@@ -265,7 +265,7 @@ typedef enum usage {
   PREFER_UNDERLAY,  // Prefer the underlay name. For chdir.
   WRITE,  // Filesystem object may be changed (might be read, too)
   EXCLUSIVE,  // O_EXCL creation
-  SWITCH_UNDERLAY,  // If given an overlay name, switch to underlay
+  READLINK,  // readlink() emulation
   OPENDIR, // Got the parameter for opendir().
   EXIST, // Like WRITE, but if file exists in underlay, touch overlay
          // ("WRITE" would copy a whole file, which is pointless if we're
@@ -956,16 +956,6 @@ static char *__redir_name(const char *pathname, int use)
       debug("redir_name 23 returning overlay name %s\n", overlay_name);
       return prepend_override_prefix(overlay_name);
     }
-  } else if (use == SWITCH_UNDERLAY) {
-    // If given overlay name, forceably switch to underlay
-    // whether it exists or not.  This is different from PREFER_UNDERLAY,
-    // which only returns the underlay name if it exists.
-    // Do *NOT* prepend the override prefix, we need the original name.
-    debug("SWITCH_UNDERLAY!\n");
-    free(overlay_name);
-    free(underlay_name);
-    debug("redir_name 56 returning NULL, interp as %s\n", pathname);
-    return NULL;
   } else if (use == OPENDIR) {
     // Create a new directory that mirrors
     // whether it exists or not.  This is different from PREFER_UNDERLAY,
@@ -1102,6 +1092,7 @@ static char *redir_name(const char *pathname, int use)
   const char *f_path;
   struct stat mystats;
   int result;
+  int is_readlink = ((use & USAGE_T_MASK) == READLINK);
 
   if (!pathname) return NULL; // Shouldn't happen.
 
@@ -1112,13 +1103,13 @@ static char *redir_name(const char *pathname, int use)
   if (use_override_prefix && within(pathname, override_prefix))
     return NULL;
 
-
-  // FIXME: The following partially implements symlinks support.
-  // For every symlink we do readlink(), and try to redirect the content.
-  // This is not a precise emulation, as programs will see the
-  // original files instead of symlinks even when doing stat().
-
+  // we allow readlink() to see the original symlink.
+  // all other calls see the replacement symlink.
+  if (is_readlink)
+    use = READ | (use & ~USAGE_T_MASK);
   r_path = __redir_name(pathname, use);
+  if (is_readlink)
+    return r_path;
   f_path = r_path ?: pathname;
   result = my_lstat(f_path, &mystats);
   if (result == -1)
@@ -1406,8 +1397,8 @@ RETURNS(int, eaccess, (const char *path, int mode), \
 WRAP(int, chdir, chdir, (const char *path), (path), PREFER_UNDERLAY,)
 
 
-WRAP(ssize_t, readlink, readlink, (const char *path, char *buf, size_t bufsiz), (path, buf, bufsiz), READ,)
-WRAP(ssize_t, readlinkat, readlinkat, (int dirfd, const char *path, char *buf, size_t bufsiz), (dirfd, path, buf, bufsiz), READ|AT(dirfd),)
+WRAP(ssize_t, readlink, readlink, (const char *path, char *buf, size_t bufsiz), (path, buf, bufsiz), READLINK,)
+WRAP(ssize_t, readlinkat, readlinkat, (int dirfd, const char *path, char *buf, size_t bufsiz), (dirfd, path, buf, bufsiz), READLINK|AT(dirfd),)
 
 WRAP(int, symlink, symlink, (const char *oldpath, const char *path), \
        (oldpath, path), EXCLUSIVE, \
