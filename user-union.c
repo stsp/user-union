@@ -1473,8 +1473,10 @@ WRAP(int, statvfs, statvfs, (const char* path, struct statvfs *buf), \
 WRAP64(int, unlink, unlink, (const char* path), (path), EXIST, whitelist_if_error_free(result>=0, old_pathname))
 WRAP64(int, unlinkat, unlinkat, (int dirfd, const char* path, int flags), (dirfd, path, flags), EXIST|AT(dirfd),
      whitelist_if_error_free(result>=0,old_pathname))
+#ifdef HAVE_STRUCT_STATVFS64_P
 WRAP(int, statvfs64, statvfs64, (const char* path, struct statvfs64 *buf), \
      (path, buf), READ,)
+#endif
 
 
 // We can only create SOME kinds of nodes, but we can try.
