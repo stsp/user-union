@@ -131,9 +131,12 @@
 #include <string.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <fcntl.h>
 #include <stdarg.h>
 #include <assert.h>
@@ -1192,6 +1195,22 @@ static RETURNTYPE real_##NAME CALL_PARAMETER_TYPES {                        \
 SPECIAL_CHAIN(RETURNTYPE, NAME, PARAMETER_TYPES,                            \
 PARAMETER_TYPES, ARGUMENTS, TOSYMBOL)
 
+#define SOCKET_CHAIN(RETURNTYPE, NAME, CALL_PARAMETER_TYPES,                \
+        ARGUMENTS, TOSYMBOL)                                                \
+typedef RETURNTYPE NAME##_t CALL_PARAMETER_TYPES;                           \
+static RETURNTYPE real_##NAME CALL_PARAMETER_TYPES {                        \
+  static NAME##_t* p_real_##NAME = NULL;                                    \
+  if (p_real_##NAME == NULL) {                                              \
+    p_real_##NAME = (NAME##_t*) dlsym(RTLD_NEXT, #TOSYMBOL);                \
+    if (!p_real_##NAME) {                                                   \
+      fprintf(stderr, "FAIL: real_" #NAME " can't chain " #TOSYMBOL "\n");  \
+      exit(1);                                                              \
+    }                                                                       \
+  }                                                                         \
+  debug("Chaining real_" #NAME " to " #TOSYMBOL "\n");                      \
+  return (*p_real_##NAME) ARGUMENTS;                                        \
+}
+
 // Create a simple function that returns a value, WITHOUT chaining
 // down to lower-level functions.  Useful for geteuid(), etc.
 #define BASIC_RETURNS(RETURNTYPE, NAME, PARAMETER_TYPES, RESULT)            \
@@ -1295,6 +1314,42 @@ int NAME PARAMETER_TYPES {                                                  \
   return result;                                                            \
 }
 
+#define SOCKET_WRAPPER(NAME, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER)      \
+int NAME PARAMETER_TYPES {                                                  \
+  struct sockaddr_un new_addr;                                              \
+  struct sockaddr_un *my_addr;                                              \
+  struct sockaddr_un *old_addr;                                             \
+  char *new_pathname = NULL;                                                \
+  char *old_pathname;                                                       \
+  char *path;                                                               \
+  int result;                                                               \
+  int saved_errno;                                                          \
+  if (addr->sa_family != AF_UNIX)                                           \
+    return real_##NAME ARGUMENTS ;                                          \
+  my_addr = &new_addr;                                                      \
+  old_addr = (struct sockaddr_un *)addr;                                    \
+  *my_addr = *old_addr;                                                     \
+  path = my_addr->sun_path;                                                 \
+  old_pathname = old_addr->sun_path;                                        \
+  debug("Intercepted " #NAME "(\"%s\")\n", path);                           \
+  new_pathname = redir_name(path, USAGE);                                   \
+  if (new_pathname) {                                                       \
+    strncpy(new_addr.sun_path, new_pathname, sizeof(new_addr.sun_path) - 1);\
+    new_addr.sun_path[sizeof(new_addr.sun_path) - 1] = 0;                   \
+    addr = (struct sockaddr *)my_addr;                                      \
+    addrlen = offsetof(struct sockaddr_un, sun_path) + strlen(new_addr.sun_path) + 1; \
+    debug("Chaining " #NAME " with %s len=%i\n", my_addr->sun_path, addrlen);\
+  }                                                                         \
+  result = real_##NAME ARGUMENTS ;                                          \
+  saved_errno = errno;                                                      \
+  if (result == -1) debug(#NAME " failed, %i %s\n", saved_errno, strerror(saved_errno)); \
+  AFTER ;                                                                   \
+  if (new_pathname) free(new_pathname);                                     \
+  debug("Finished wrapped version of " #NAME "\n");                         \
+  errno = saved_errno;                                                      \
+  unused_okay(old_pathname);                                                \
+  return result;                                                            \
+}
 
 // TODO: Should I wrap _NAME and __NAME also?
 
@@ -1339,6 +1394,14 @@ BASIC_OPEN_WRAP(__##NAME, PARAMETER_TYPES, PARAMETER_TYPES_ALL, ARGUMENTS, USAGE
 OPEN_WRAP(NAME, PARAMETER_TYPES, PARAMETER_TYPES_ALL, ARGUMENTS, USAGE) \
 OPEN_WRAP(NAME##64, PARAMETER_TYPES, PARAMETER_TYPES_ALL, ARGUMENTS, USAGE)
 
+#define BASIC_SOCKET_WRAP(NAME, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER) \
+SOCKET_CHAIN(int, NAME, PARAMETER_TYPES, ARGUMENTS, NAME) \
+SOCKET_WRAPPER(NAME, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER)
+
+#define SOCKET_WRAP(NAME, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER) \
+BASIC_SOCKET_WRAP(NAME, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER) \
+BASIC_SOCKET_WRAP(_##NAME, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER) \
+BASIC_SOCKET_WRAP(__##NAME, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER)
 
 // Helper functions for the wrappers
 static void whitelist_if_error_free(int result, const char *path) {
@@ -1369,6 +1432,12 @@ static void unwhitelist_if_error_free(int result, const char *path) {
 // We must use a special wrapper for open().
 OPEN_WRAP64(open, (const char *path, int flags, ...), (const char *path, int flags, mode_t mode), (path, flags, mode), use_open(flags))
 OPEN_WRAP64(openat, (int dirfd, const char *path, int flags, ...), (int dirfd, const char *path, int flags, mode_t mode), (dirfd, path, flags, mode), use_open(flags)|AT(dirfd))
+
+SOCKET_WRAP(bind, (int sockfd, const struct sockaddr *addr, \
+                socklen_t addrlen), (sockfd, addr, addrlen), WRITE, \
+                unwhitelist_if_error_free(result >= 0, old_pathname))
+SOCKET_WRAP(connect, (int sockfd, const struct sockaddr *addr, \
+                socklen_t addrlen), (sockfd, addr, addrlen), READ,)
 
 
 WRAP(int, access, access, (const char *path, int mode), (path, mode), READ,)
