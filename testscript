@@ -25,8 +25,9 @@ mkdir /usr/share11
 echo Hello again > /dev/null
 
 cd bin
+# Test absolute symlinks
 ln -s /bin/hello hello_symlink2
-# FIXME: Make relative symlinks work properly.
+# Test relative symlinks.
 ln -s hello hello_symlink
 # FIXME: Should this kind of link "undo" the redirection?
 # ln -s /tmp/redir/usr/bin/hello slink_usr_bin_hello
