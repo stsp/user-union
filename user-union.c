@@ -788,22 +788,28 @@ static char *__redir_name(const char *pathname, int use)
   // setting overlay_prefix as needed.
   overlay_prefix = underlay_prefix = NULL;
   best_match_len = -1;
+  branch = NULL;
   // debug("Looking for best match to %s\n", canonicalized_pathname);
   for (i = 0; i < num_branches; i++) {
-    branch = branchlist + i;
-    // debug("Comparing with branch %s\n", branch->list->val);
-    if (!within(canonicalized_pathname, branch->mount_point))
+    struct branch *br = &branchlist[i];
+    // debug("Comparing with branch %s\n", br->list->val);
+    if (!within(canonicalized_pathname, br->mount_point))
       continue;
-    len = strlen(branch->mount_point);
+    len = strlen(br->mount_point);
     // debug(" len=%d, best_match_len=%d\n", len, best_match_len);
     if (len <= best_match_len)
       continue;
     // This is better than any previous match, accept it.
-    overlay_prefix = branch->overlay;
-    mount_point = branch->mount_point;
+    overlay_prefix = br->overlay;
+    mount_point = br->mount_point;
     best_match_len = len;
+    branch = br;
     // debug(" Best so far.  overlay_prefix=%s, underlay_prefix=%s\n", overlay_prefix, underlay_prefix);
-    if (branch->underlay) {
+  }
+  if (!branch)
+    return NULL;
+
+  if (branch->underlay) {
       int best_match_len_undl = -1;
       // debug(" Examining union beginning %s\n", branch->list->val);
       for (j = 0; j < branch->num_underlays; j++) {
@@ -828,11 +834,10 @@ static char *__redir_name(const char *pathname, int use)
       if (!underlay_prefix)
         underlay_prefix = branch->underlay[0];
       // debug(" Setting underlay_prefix=%s\n", underlay_prefix);
-    } else { // Non-union
+  } else { // Non-union
       // debug(" Examining non-union %s\n", branch->list->val);
       assert(overlay_prefix);
       underlay_prefix = overlay_prefix;
-    }
   }
   debug("redir_name: For canonicalized_pathname=%s, overlay_prefix=%s, underlay_prefix=%s\n", canonicalized_pathname, overlay_prefix, underlay_prefix);
 
