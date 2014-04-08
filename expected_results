@@ -5,6 +5,7 @@
 ./usr/bin/hello3   f 6 09f7e02f1290be211da7
 ./usr/bin/hello   f 6 09f7e02f1290be211da7
 ./usr/bin/hello_symlink2   s 10 -> /bin/hello
+./usr/bin/hello_symlink   f 5 -> hello 09f7e02f1290be211da7
 ./usr/bin/starterfile2   f 18 d9dd0f0228584b39798a
 ./usr/bin/wokka   s 6 -> /wokka
 ./usr   d 
