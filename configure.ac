@@ -8,6 +8,9 @@ AC_CONFIG_SRCDIR([user-union.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 
+# Turn on extensions since we need to muck about in them.
+AC_USE_SYSTEM_EXTENSIONS
+
 # Bring in automake.
 AM_INIT_AUTOMAKE([1.11 -Wall -Werror])
 # The following invokes AM_PROG_AR, but only if it's defined.
@@ -58,7 +61,9 @@ AC_FUNC_MALLOC
 AC_CHECK_FUNCS([euidaccess getcwd strchr strcspn strdup strstr])
 
 # See if we have "struct statvfs64" (Cygwin does not)
-AC_CHECK_TYPES([struct statvfs64 *],,,[#include <sys/statvfs.h>])
+AC_CHECK_TYPES([struct statvfs64],,,
+[AC_INCLUDES_DEFAULT
+#include <sys/statvfs.h>])
 
 CFLAGS="$CFLAGS -Wall"
 
