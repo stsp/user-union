@@ -253,6 +253,29 @@ inline static bool within(const char *path, const char *dir) {
   return false;
 }
 
+static bool within_max(const char *path, const char *dir, int depth)
+{
+  const char *p;
+  int cnt;
+  if (!within(path, dir))
+    return false;
+  if (depth == -1)
+    return true;
+  p = path + strlen(dir);
+  while (*p == '/')
+    p++;
+  cnt = 0;
+  while (p && *p) {
+    p = strchr(p, '/');
+    cnt++;
+    if (p) {
+      while (*p == '/')
+        p++;
+    }
+  }
+  return (cnt <= depth);
+}
+
 inline static int skip(const char *path) {
   int len = strlen(path);
   if (path && (path[0] == '/') && (path[1] == '\0'))
@@ -384,6 +407,7 @@ struct branch {
   char **underlay;
   int num_underlays;
   char *mount_point;
+  int match_depth;
 };
 
 static struct branch *branchlist;
@@ -453,6 +477,21 @@ static void initialize_branchlist(void) {
       exit(1);
     }
     current_branch->mount_point = str;
+
+    snprintf(var_name, sizeof(var_name), "USER_UNION_%i_MATCH_DEPTH", i);
+    str = getenv(var_name);
+    if (!str || !str[0]) {
+      current_branch->match_depth = -1;
+    } else {
+      cnt = strtol(str, &endp, 10);
+      if (*endp) {
+        fprintf(stderr,
+           "user-union: FATAL. Environment variable %s=%s wrong.\n",
+           var_name, str);
+        exit(1);
+      }
+      current_branch->match_depth = cnt;
+    }
 
     snprintf(var_name, sizeof(var_name), "USER_UNION_%i_UNDERLAY_CNT", i);
     str = getenv(var_name);
@@ -715,7 +754,7 @@ static char *gen_whitelist_name(const char *name) {
 static char *__redir_name(const char *pathname, int use)
 {
   char *canonicalized_pathname;
-  int  len, best_match_len;
+  int  len, best_match_len, best_depth_len;
   int  i, j;
   int exist_creat;
   char *overlay_prefix, *underlay_prefix, *mount_point;
@@ -788,21 +827,26 @@ static char *__redir_name(const char *pathname, int use)
   // setting overlay_prefix as needed.
   overlay_prefix = underlay_prefix = NULL;
   best_match_len = -1;
+  best_depth_len = -1;
   branch = NULL;
   // debug("Looking for best match to %s\n", canonicalized_pathname);
   for (i = 0; i < num_branches; i++) {
     struct branch *br = &branchlist[i];
-    // debug("Comparing with branch %s\n", br->list->val);
-    if (!within(canonicalized_pathname, br->mount_point))
+    int depth_cmp = (br->match_depth != -1 || best_depth_len != -1);
+    debug("Comparing with branch %s\n", br->mount_point);
+    if (!within_max(canonicalized_pathname, br->mount_point, br->match_depth))
       continue;
     len = strlen(br->mount_point);
-    // debug(" len=%d, best_match_len=%d\n", len, best_match_len);
-    if (len <= best_match_len)
+    debug(" len=%d, best_match_len=%d best_depth_len=%d\n",
+        len, best_match_len, best_depth_len);
+    if ((depth_cmp && best_depth_len != -1 && br->match_depth >= best_depth_len) ||
+        (!depth_cmp && len <= best_match_len))
       continue;
     // This is better than any previous match, accept it.
     overlay_prefix = br->overlay;
     mount_point = br->mount_point;
     best_match_len = len;
+    best_depth_len = br->match_depth;
     branch = br;
     // debug(" Best so far.  overlay_prefix=%s, underlay_prefix=%s\n", overlay_prefix, underlay_prefix);
   }

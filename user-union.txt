@@ -27,6 +27,7 @@ NOOP=n
 # FIXME: Put this value in one place in the source code
 OVERRIDE_PREFIX_VALUE="/./.././."
 MY_USER_UNION_PRIV_DIR="/tmp/redir/.user-union"
+MATCH_DEPTH=-1
 
 if [ -n "$LD_PRELOAD" ]; then
  MY_LD_PRELOAD="${LD_PRELOAD}"
@@ -60,6 +61,9 @@ add_branch() {
     export USER_UNION_${MY_USER_UNION_CNT}_MOUNT_POINT="$3"
   else
     export USER_UNION_${MY_USER_UNION_CNT}_MOUNT_POINT="$DEFAULT_MOUNT_POINT"
+  fi
+  if [ $MATCH_DEPTH != -1 ]; then
+    export USER_UNION_${MY_USER_UNION_CNT}_MATCH_DEPTH=$MATCH_DEPTH
   fi
   MY_USER_UNION_CNT=`expr "$MY_USER_UNION_CNT" + 1`
 }
@@ -152,6 +156,7 @@ while [ $# -gt 0 ] ; do
         shift ; shift ;;
     -t) shift ; TESTMODE="y" ;;
     -u) shift ; UNDERLAY_DIRECTORY="$1" ; shift ;;
+    -x) shift ; MATCH_DEPTH=$1 ; shift ;;
     -P) shift
         printf '%s\n' "$OVERRIDE_PREFIX_VALUE"
         exit 0 ;;
