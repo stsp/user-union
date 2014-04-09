@@ -825,7 +825,7 @@ static char *__redir_name(const char *pathname, int use)
   // Now examine branch information to find best match.
   // Track best match using best_match_len (longest one wins),
   // setting overlay_prefix as needed.
-  overlay_prefix = underlay_prefix = NULL;
+  overlay_prefix = underlay_prefix = mount_point = NULL;
   best_match_len = -1;
   best_depth_len = -1;
   branch = NULL;
