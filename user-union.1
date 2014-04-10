@@ -121,6 +121,16 @@ even when user-union is normally redirecting files:
 .fi
 
 
+.TP
+\fB-x\fR \fINUM\fR
+Set matching depth for subsequently added overlays.
+For example, if you have overlay /tmp/root on /root and set
+matching depth to 1, then only /root will be redirected to
+/tmp/root, but all the /root/** sub-directories will keep using
+previously defined overlay (or no overlay at all).
+Set depth to -1 for unlimited depth (unlimited is the default).
+
+
 
 .PP
 .SH "IMPLEMENTATION APPROACH"
