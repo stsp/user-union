@@ -83,6 +83,8 @@ Where options are:
             lay",  and  any  contents of "overlay" will override those in
             "underlay".
 
+  -d        Turn on user-union debugging output.
+
   -i DIR    Ignore DIR - do not overlay it, even if it’s within a  direc-
             tory that is overlaid.
 
