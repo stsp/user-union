@@ -114,7 +114,7 @@ Where options are:
             matching depth to 1, then only /root will be redirected to
             /tmp/root, but all the /root/** sub-directories will keep using
             previously defined overlay (or no overlay at all).
-            Set depth to -1 for unlimited depth. This is the default.
+            Set depth to -1 for unlimited depth (unlimited is the default).
 
   -P        Report the override prefix on a line and return.
             The override prefix disables user-union redirection of a pathname.
