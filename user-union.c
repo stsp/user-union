@@ -1209,9 +1209,10 @@ static char *redir_name(const char *pathname, int use)
 
 // Quickly calculate euidaccess as if we're root.
 // If the file exists somewhere, we'll return 0; else return -1.
-static int my_overlay_euidaccess(const char *path) {
+static int my_overlay_euidaccess(const char *path, int mode) {
   char *new_path = redir_name(path, READ);
   bool exists;
+  unused_okay(mode);  // Remove excess -Wunused-parameter warning
   if (!new_path)
     return -1;
   exists = my_file_exists(new_path);
@@ -1515,9 +1516,9 @@ WRAP(int, rmdir, rmdir, (const char *path), \
 
 RETURNS(uid_t, geteuid, (void), 0)
 RETURNS(int, euidaccess, (const char *path, int mode), \
-        my_overlay_euidaccess(path))
+        my_overlay_euidaccess(path, mode))
 RETURNS(int, eaccess, (const char *path, int mode), \
-        my_overlay_euidaccess(path))
+        my_overlay_euidaccess(path, mode))
 
 
 
