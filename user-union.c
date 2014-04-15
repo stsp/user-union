@@ -497,6 +497,7 @@ static void initialize_branchlist(void) {
     str = getenv(var_name);
     if (!str || !str[0]) {
       current_branch->num_underlays = 0;
+      current_branch->underlay = NULL;
       continue;
     }
     undl_cnt = strtol(str, &endp, 10);
