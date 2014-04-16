@@ -2,6 +2,8 @@
 
 ACLOCAL_AMFLAGS = -I m4 --install
 
+AM_CFLAGS = $(CWARNINGFLAGS)
+
 my_library_la_name = libuser-union-0.12.la
 lib_LTLIBRARIES = $(my_library_la_name)
 libuser_union_0_12_la_SOURCES = user-union.c

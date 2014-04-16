@@ -65,7 +65,25 @@ AC_CHECK_TYPES([struct statvfs64],,,
 [AC_INCLUDES_DEFAULT
 #include <sys/statvfs.h>])
 
-CFLAGS="$CFLAGS -Wall"
+# Enable gcc warning flags, but only if they seem to work
+# C warning flags (if any) are stored in Makefile variable CWARNINGFLAGS.
+CWARNINGFLAGS=''
+TRY_CWARNINGFLAGS='-Wall -Wextra'
+ORIGINAL_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $TRY_CWARNINGFLAGS"
+AC_MSG_CHECKING([[for gcc warning flags]])
+AC_LINK_IFELSE(
+[AC_LANG_PROGRAM([[
+#include <stdio.h>
+int f() {
+  return 0;
+}
+]])],
+  [AC_MSG_RESULT([yes])
+   CWARNINGFLAGS="$TRY_CWARNINGFLAGS"],
+  [AC_MSG_RESULT([no])])
+CFLAGS="$ORIGINAL_CFLAGS"
+AC_SUBST([CWARNINGFLAGS])
 
 AC_ARG_ENABLE(debug,
   AC_HELP_STRING([--enable-debug], [compile with debug support]),
