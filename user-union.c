@@ -1559,9 +1559,9 @@ TWO_WRAP(int, renameat, renameat, (int olddirfd, const char *path, int newdirfd,
        EXCLUSIVE|AT(newdirfd), whitelist_if_error_free(result>=0, old_pathname) ; \
        unwhitelist_if_error_free(result>=0, old_pathname2))
 
-TWO_WRAP(int, mount, mount, (const char *path, const char *path2, \
+WRAP(int, mount, mount, (const char *source, const char *path, \
        const char *filesystemtype, unsigned long mountflags, const void *data), \
-       (path, path2, filesystemtype, mountflags, data), READ, WRITE,)
+       (source, path, filesystemtype, mountflags, data), WRITE,)
 
 WRAP(int, umount, umount, (const char *path), (path), WRITE,)
 WRAP(int, umount2, umount2, (const char *path, int flags), (path, flags), WRITE,)
