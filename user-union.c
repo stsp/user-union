@@ -879,10 +879,11 @@ static char *__redir_name(const char *pathname, int use)
       if (!underlay_prefix)
         underlay_prefix = branch->underlay[0];
       // debug(" Setting underlay_prefix=%s\n", underlay_prefix);
-  } else { // Non-union
+  } else if (branch->overlay) { // Non-union
       // debug(" Examining non-union %s\n", branch->list->val);
-      assert(overlay_prefix);
       underlay_prefix = overlay_prefix;
+  } else { // exclude branch
+      return NULL;
   }
   debug("redir_name: For canonicalized_pathname=%s, overlay_prefix=%s, underlay_prefix=%s\n", canonicalized_pathname, overlay_prefix, underlay_prefix);
 

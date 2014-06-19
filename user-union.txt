@@ -100,6 +100,10 @@ add_pair() {
   add_branch "$1" "$2" "$2"
 }
 
+add_nobranch() {
+  add_branch "" "" "$1"
+}
+
 usage() {
 cat << USAGE
 user-union [OPTIONS] [COMMAND]
@@ -171,7 +175,7 @@ while [ $# -gt 0 ] ; do
         shift ; shift ;;
     -d) shift ; export USER_UNION_DEBUG=1 ;;
     -i) shift
-        add_branch "$1"
+        add_nobranch "$1"
         shift ;;
     -k) shift ; MOUNT_POINT="$1" ; shift ;;
     -l) shift
@@ -215,7 +219,7 @@ if [ $MY_USER_UNION_CNT -eq $MY_USER_UNION_CNT_INIT ] ; then
           "${UNDERLAY_DIRECTORY:-"$DEFAULT_UNDERLAY_DIRECTORY"}" \
           "${MOUNT_POINT:-"$DEFAULT_MOUNT_POINT"}"
  for i in ${DEFAULT_NONUNION}; do
-   add_branch "$i"
+   add_nobranch "$i"
  done
 fi
 
