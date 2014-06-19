@@ -51,14 +51,16 @@ MY_USER_UNION_CNT="$MY_USER_UNION_CNT_INIT"
 
 add_branch() {
   # $1 is the overlay, $2 is the underlay, $3 is the mount point
-  export USER_UNION_${MY_USER_UNION_CNT}_OVERLAY="$1"
+  if [ -n "$1" ]; then
+    export USER_UNION_${MY_USER_UNION_CNT}_OVERLAY=`realpath $1`
+  fi
   if [ -n "$2" ]; then
-    export USER_UNION_${MY_USER_UNION_CNT}_UNDERLAY_0="$2"
+    export USER_UNION_${MY_USER_UNION_CNT}_UNDERLAY_0=`realpath $2`
     export USER_UNION_${MY_USER_UNION_CNT}_UNDERLAY_CNT=1
-    DEFAULT_MOUNT_POINT="$2"
+    DEFAULT_MOUNT_POINT=`realpath $2`
   fi
   if [ -n "$3" ]; then
-    export USER_UNION_${MY_USER_UNION_CNT}_MOUNT_POINT="$3"
+    export USER_UNION_${MY_USER_UNION_CNT}_MOUNT_POINT=`realpath -m $3`
   else
     export USER_UNION_${MY_USER_UNION_CNT}_MOUNT_POINT="$DEFAULT_MOUNT_POINT"
   fi
