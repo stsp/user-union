@@ -88,6 +88,10 @@ Where options are:
   -i DIR    Ignore DIR - do not overlay it, even if it’s within a  direc-
             tory that is overlaid.
 
+  -l OV UN MP
+            Add an overlay OV which overlays the underlay UN and is
+            accessable through the mountpoint MP.
+
   -m UN     Simulated mount.  Create a temporary overlay directory TEMPO-
             RARY, print that directory name TEMPORARY as the first output
             line,  and  then do -a TEMPORARY UN.  If you want to create a
