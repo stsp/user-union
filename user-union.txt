@@ -74,7 +74,7 @@ add_pair() {
 }
 
 usage() {
-printf '%s' <<USAGE
+cat << USAGE
 user-union [OPTIONS] [COMMAND]
 
 Where options are:
