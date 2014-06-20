@@ -56,17 +56,37 @@ PROG_REALPATH_M='realpath -m'
 add_branch() {
   # $1 is the overlay, $2 is the underlay, $3 is the mount point
   if [ -n "$1" ]; then
-    export USER_UNION_${MY_USER_UNION_CNT}_OVERLAY="$(realpath $1)"
+    RP="$(realpath -e $1)"
+    if [ $? != 0 ]; then
+      echo "Unable to canonicalize path $1"
+      exit 1
+    fi
+    export USER_UNION_${MY_USER_UNION_CNT}_OVERLAY=$RP
   fi
   if [ -n "$2" ]; then
-    export USER_UNION_${MY_USER_UNION_CNT}_UNDERLAY_0="$(realpath $2)"
+    RP="$(realpath -e $2)"
+    if [ $? != 0 ]; then
+      echo "Unable to canonicalize path $2"
+      exit 1
+    fi
+    export USER_UNION_${MY_USER_UNION_CNT}_UNDERLAY_0=$RP
     export USER_UNION_${MY_USER_UNION_CNT}_UNDERLAY_CNT=1
-    DEFAULT_MOUNT_POINT="$(realpath $2)"
+    MP=$RP
+  else
+    MP=""
   fi
   if [ -n "$3" ]; then
-    export USER_UNION_${MY_USER_UNION_CNT}_MOUNT_POINT="$(realpath -m $3)"
+    RP="$(realpath -m $3)"
+    if [ $? != 0 ]; then
+      echo "Unable to canonicalize path $3"
+      exit 1
+    fi
+    export USER_UNION_${MY_USER_UNION_CNT}_MOUNT_POINT=$RP
+  elif [ -n "$MP" ]; then
+    export USER_UNION_${MY_USER_UNION_CNT}_MOUNT_POINT="$MP"
   else
-    export USER_UNION_${MY_USER_UNION_CNT}_MOUNT_POINT="$DEFAULT_MOUNT_POINT"
+    echo "ERROR: Neither underlay nor mountpoint are specified"
+    exit 1
   fi
   if [ $MATCH_DEPTH != -1 ]; then
     export USER_UNION_${MY_USER_UNION_CNT}_MATCH_DEPTH=$MATCH_DEPTH
@@ -76,7 +96,7 @@ add_branch() {
 
 add_pair() {
   # $1 is the overlay, $2 is the underlay
-  add_branch "$1" "$2" "$MOUNT_POINT"
+  add_branch "$1" "$2" "$2"
 }
 
 usage() {
@@ -190,8 +210,9 @@ done
 
 if [ $MY_USER_UNION_CNT -eq $MY_USER_UNION_CNT_INIT ] ; then
  # Nothing set, create reasonable defaults.
-add_pair "${OVERLAY_DIRECTORY:-"$DEFAULT_OVERLAY_DIRECTORY"}" \
-          "${UNDERLAY_DIRECTORY:-"$DEFAULT_UNDERLAY_DIRECTORY"}"
+ add_branch "${OVERLAY_DIRECTORY:-"$DEFAULT_OVERLAY_DIRECTORY"}" \
+          "${UNDERLAY_DIRECTORY:-"$DEFAULT_UNDERLAY_DIRECTORY"}" \
+          "${MOUNT_POINT:-"$DEFAULT_MOUNT_POINT"}"
  for i in ${DEFAULT_NONUNION}; do
    add_branch "$i"
  done
