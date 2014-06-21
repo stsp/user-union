@@ -52,6 +52,39 @@ else
 fi
 AC_SUBST([PROG_REALPATH_DEFAULT])
 
+# Set PROG_REALPATH_E, normally "realpath -e"
+AC_MSG_CHECKING([[for realpath -e (all components must exist)]])
+if realpath -e /bin/sh 2>/dev/null
+then
+  PROG_REALPATH_E='realpath -e'
+  AC_MSG_RESULT([$PROG_REALPATH_E])
+elif readlink -e /bin/sh 2>/dev/null
+then
+  PROG_REALPATH_E="readlink -e"
+  AC_MSG_RESULT([$PROG_REALPATH_E])
+else
+  AC_MSG_RESULT([FAILURE])
+  echo 'No useful realpath -e or readlink -e available' >&2
+  exit 1
+fi
+AC_SUBST([PROG_REALPATH_E])
+
+# Set PROG_REALPATH_M, normally "realpath -m"
+AC_MSG_CHECKING([[for realpath -m (no components need exist)]])
+if test "$(realpath -m /No/Such/Filename 2>/dev/null)" = /No/Such/Filename
+then
+  PROG_REALPATH_M='realpath -m'
+  AC_MSG_RESULT([$PROG_REALPATH_M])
+elif test "$(readlink -m /No/Such/Filename 2>/dev/null)" = /No/Such/Filename
+then
+  PROG_REALPATH_M="readlink -m"
+  AC_MSG_RESULT([$PROG_REALPATH_M])
+else
+  AC_MSG_RESULT([FAILURE])
+  echo 'No useful realpath -m or readlink -m available' >&2
+  exit 1
+fi
+AC_SUBST([PROG_REALPATH_M])
 
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-ldl':

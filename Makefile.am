@@ -28,6 +28,8 @@ user-union: user-union.txt $(my_library_la_name)
           -e 's!^\(my_library_la_name\)=\(.*\)!\1="$(my_library_la_name)"!' \
           -e 's!^\(libdir\)=.*!\1="$(libdir)"!' \
           -e 's!^\(PROG_REALPATH_DEFAULT\)=.*!\1="$(PROG_REALPATH_DEFAULT)"!' \
+          -e 's!^\(PROG_REALPATH_E\)=.*!\1="$(PROG_REALPATH_E)"!' \
+          -e 's!^\(PROG_REALPATH_M\)=.*!\1="$(PROG_REALPATH_M)"!' \
           < $(srcdir)/user-union.txt > user-union
 	chmod a+rx user-union
 
