@@ -49,6 +49,8 @@ else
 fi
 MY_USER_UNION_CNT="$MY_USER_UNION_CNT_INIT"
 
+PROG_REALPATH_DEFAULT=realpath
+
 add_branch() {
   # $1 is the overlay, $2 is the underlay, $3 is the mount point
   if [ -n "$1" ]; then

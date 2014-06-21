@@ -35,6 +35,24 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MKDIR_P
 
+# Set PROG_REALPATH_DEFAULT
+AC_MSG_CHECKING([[for realpath (all but last component must exist)]])
+if test "$(realpath /bin/NoSuchFile 2>/dev/null)" = /bin/NoSuchFile
+then
+  PROG_REALPATH_DEFAULT=realpath
+  AC_MSG_RESULT([$PROG_REALPATH_DEFAULT])
+elif test "$(readlink -f /bin/NoSuchFile 2>/dev/null)" = /bin/NoSuchFile
+then
+  PROG_REALPATH_DEFAULT="readlink -f"
+  AC_MSG_RESULT([$PROG_REALPATH_DEFAULT])
+else
+  AC_MSG_RESULT([FAILURE])
+  echo 'No useful realpath or readlink available' >&2
+  exit 1
+fi
+AC_SUBST([PROG_REALPATH_DEFAULT])
+
+
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-ldl':
 # AC_CHECK_LIB([dl], [main])
