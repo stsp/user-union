@@ -62,7 +62,7 @@ AC_SUBST([$1])
 # Set PROG_REALPATH, normally "realpath"
 AC_MSG_CHECKING([[for realpath (all but last component must exist)]])
 AX_CHECK_PROGS_TEST([PROG_REALPATH],
-  ['realpath' 'readlink -f'],
+  ['realpath --' 'readlink -f --'],
   [test "$($try /bin/NoSuchFile 2>/dev/null)" = /bin/NoSuchFile])
 AC_ARG_VAR([PROG_REALPATH], [Command to canonicalize filename (except last component, e.g., 'realpath')])
 
@@ -73,7 +73,7 @@ AC_ARG_VAR([PROG_REALPATH], [Command to canonicalize filename (except last compo
 # in many use cases.
 AC_MSG_CHECKING([[for realpath -e (all components must exist)]])
 AX_CHECK_PROGS_TEST([PROG_REALPATH_E],
-  ['realpath -e' 'readlink -e' 'realpath' 'readlink'],
+  ['realpath -e --' 'readlink -e --' 'realpath --' 'readlink --' 'realpath' 'readlink'],
   [$try /bin/sh >/dev/null 2>&1])
 case "$PROG_REALPATH_E" in
   *\ -e*) ;; # Normal case, good
@@ -84,7 +84,7 @@ AC_ARG_VAR([PROG_REALPATH_E], [Command to canonicalize filename (all components 
 # Set PROG_REALPATH_M, normally "realpath -m"
 AC_MSG_CHECKING([[for realpath -m (no components need exist)]])
 AX_CHECK_PROGS_TEST([PROG_REALPATH_M],
-  ['realpath -m' 'readlink -m'],
+  ['realpath -m --' 'readlink -m --'],
   [test "$($try /No/Such/Filename 2>/dev/null)" = /No/Such/Filename])
 AC_ARG_VAR([PROG_REALPATH_M], [Command to canonicalize filename (no components need exist, e.g., 'realpath -m')])
 
