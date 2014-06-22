@@ -55,7 +55,9 @@ PROG_REALPATH_M='realpath -m'
 
 add_branch() {
   # $1 is the overlay, $2 is the underlay, $3 is the mount point
-  printf "DEBUG add_branch: 1=$1 ; 2=$2 ; 3=$3\n" >&2
+  if [ -n "$USER_UNION_DEBUG" ] ; then 
+    printf "user-union: add_branch: 1=$1 ; 2=$2 ; 3=$3\n" >&2
+  fi
   if [ -n "$1" ]; then
     RP="$($PROG_REALPATH "$1")"
     if [ $? != 0 ]; then
