@@ -64,6 +64,7 @@ AC_MSG_CHECKING([[for realpath (all but last component must exist)]])
 AX_CHECK_PROGS_TEST([PROG_REALPATH],
   ['realpath' 'readlink -f'],
   [test "$($try /bin/NoSuchFile 2>/dev/null)" = /bin/NoSuchFile])
+AC_ARG_VAR([PROG_REALPATH], [Command to canonicalize filename (except last component, e.g., 'realpath')])
 
 # Set PROG_REALPATH_E, normally "realpath -e"
 # If neither realpath or readlink support "-e" (e.g., Busybox),
@@ -78,12 +79,14 @@ case "$PROG_REALPATH_E" in
   *\ -e*) ;; # Normal case, good
   *) AC_MSG_WARN([Do not have 'realpath -e' nor 'readlink -e', using $PROG_REALPATH_E instead.])
 esac
+AC_ARG_VAR([PROG_REALPATH_E], [Command to canonicalize filename (all components exist, e.g., 'realpath -e')])
 
 # Set PROG_REALPATH_M, normally "realpath -m"
 AC_MSG_CHECKING([[for realpath -m (no components need exist)]])
 AX_CHECK_PROGS_TEST([PROG_REALPATH_M],
   ['realpath -m' 'readlink -m'],
   [test "$($try /No/Such/Filename 2>/dev/null)" = /No/Such/Filename])
+AC_ARG_VAR([PROG_REALPATH_M], [Command to canonicalize filename (no components need exist, e.g., 'realpath -m')])
 
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-ldl':
