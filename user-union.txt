@@ -55,33 +55,34 @@ PROG_REALPATH_M='realpath -m'
 
 add_branch() {
   # $1 is the overlay, $2 is the underlay, $3 is the mount point
+  printf "DEBUG add_branch: 1=$1 ; 2=$2 ; 3=$3\n" >&2
   if [ -n "$1" ]; then
-    RP="$(realpath -e $1)"
+    RP="$($PROG_REALPATH "$1")"
     if [ $? != 0 ]; then
       echo "Unable to canonicalize path $1"
       exit 1
     fi
-    export USER_UNION_${MY_USER_UNION_CNT}_OVERLAY=$RP
+    export USER_UNION_${MY_USER_UNION_CNT}_OVERLAY="$RP"
   fi
   if [ -n "$2" ]; then
-    RP="$(realpath -e $2)"
+    RP="$($PROG_REALPATH_E "$2")"
     if [ $? != 0 ]; then
       echo "Unable to canonicalize path $2"
       exit 1
     fi
-    export USER_UNION_${MY_USER_UNION_CNT}_UNDERLAY_0=$RP
+    export USER_UNION_${MY_USER_UNION_CNT}_UNDERLAY_0="$RP"
     export USER_UNION_${MY_USER_UNION_CNT}_UNDERLAY_CNT=1
-    MP=$RP
+    MP="$RP"
   else
     MP=""
   fi
   if [ -n "$3" ]; then
-    RP="$(realpath -m $3)"
+    RP="$($PROG_REALPATH_M "$3")"
     if [ $? != 0 ]; then
       echo "Unable to canonicalize path $3"
       exit 1
     fi
-    export USER_UNION_${MY_USER_UNION_CNT}_MOUNT_POINT=$RP
+    export USER_UNION_${MY_USER_UNION_CNT}_MOUNT_POINT="$RP"
   elif [ -n "$MP" ]; then
     export USER_UNION_${MY_USER_UNION_CNT}_MOUNT_POINT="$MP"
   else
