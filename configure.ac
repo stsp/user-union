@@ -66,10 +66,18 @@ AX_CHECK_PROGS_TEST([PROG_REALPATH],
   [test "$($try /bin/NoSuchFile 2>/dev/null)" = /bin/NoSuchFile])
 
 # Set PROG_REALPATH_E, normally "realpath -e"
+# If neither realpath or readlink support "-e" (e.g., Busybox),
+# we'll back off to using realpath or readlink. This isn't ideal (it omits
+# the existence check for the last component), but should be adequate
+# in many use cases.
 AC_MSG_CHECKING([[for realpath -e (all components must exist)]])
 AX_CHECK_PROGS_TEST([PROG_REALPATH_E],
-  ['realpath -e' 'readlink -e'],
+  ['realpath -e' 'readlink -e' 'realpath' 'readlink'],
   [$try /bin/sh >/dev/null 2>&1])
+case "$PROG_REALPATH_E" in
+  *\ -e*) ;; # Normal case, good
+  *) AC_MSG_WARN([Do not have 'realpath -e' nor 'readlink -e', using $PROG_REALPATH_E instead.])
+esac
 
 # Set PROG_REALPATH_M, normally "realpath -m"
 AC_MSG_CHECKING([[for realpath -m (no components need exist)]])
