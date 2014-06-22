@@ -35,58 +35,47 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MKDIR_P
 
-# Set PROG_REALPATH_DEFAULT.  Spaces separate command from option flags.
-AC_MSG_CHECKING([[for realpath (all but last component must exist)]])
-result=''
-for try in 'realpath' 'readlink -f' ; do
-  if test "$($try /bin/NoSuchFile 2>/dev/null)" = /bin/NoSuchFile ; then
-    result="$try"
-    AC_MSG_RESULT([$result])
-    break
+# Define helper macro:
+#   AC_CHECK_PROGS_TEST(variable_set,list_of_alternative_commands,command_test)
+# This is provided a list of alternative commands (with arguments);
+# each is tested in turn, and the result is stored in variable_set.
+m4_define([AX_CHECK_PROGS_TEST],[
+if test -z "${$1}" ; then
+  result=''
+  for try in $2 ; do
+    if $3 ; then
+      result="$try"
+      AC_MSG_RESULT([$result])
+      break
+    fi
+  done
+  if test "$result" = '' ; then
+    AC_MSG_RESULT([FAILURE])
+    echo 'No useful command available' >&2
+    exit 1
   fi
-done
-if test "$result" = '' ; then
-  AC_MSG_RESULT([FAILURE])
-  echo 'No useful command available' >&2
-  exit 1
+  $1="$result"
 fi
-PROG_REALPATH_DEFAULT="$result"
-AC_SUBST([PROG_REALPATH_DEFAULT])
+AC_SUBST([$1])
+])
 
-# Set PROG_REALPATH_E.  Spaces separate command from option flags.
+# Set PROG_REALPATH, normally "realpath"
+AC_MSG_CHECKING([[for realpath (all but last component must exist)]])
+AX_CHECK_PROGS_TEST([PROG_REALPATH],
+  ['realpath' 'readlink -f'],
+  [test "$($try /bin/NoSuchFile 2>/dev/null)" = /bin/NoSuchFile])
+
+# Set PROG_REALPATH_E, normally "realpath -e"
 AC_MSG_CHECKING([[for realpath -e (all components must exist)]])
-result=''
-for try in 'realpath -e' 'readlink -e' ; do
-  if $try /bin/sh 2>/dev/null ; then
-    result="$try"
-    AC_MSG_RESULT([$result])
-    break
-  fi
-done
-if test "$result" = '' ; then
-  AC_MSG_RESULT([FAILURE])
-  echo 'No useful command available' >&2
-  exit 1
-fi
-PROG_REALPATH_E="$result"
-AC_SUBST([PROG_REALPATH_DEFAULT])
+AX_CHECK_PROGS_TEST([PROG_REALPATH_E],
+  ['realpath -e' 'readlink -e'],
+  [$try /bin/sh >/dev/null 2>&1])
 
 # Set PROG_REALPATH_M, normally "realpath -m"
 AC_MSG_CHECKING([[for realpath -m (no components need exist)]])
-if test "$(realpath -m /No/Such/Filename 2>/dev/null)" = /No/Such/Filename
-then
-  PROG_REALPATH_M='realpath -m'
-  AC_MSG_RESULT([$PROG_REALPATH_M])
-elif test "$(readlink -m /No/Such/Filename 2>/dev/null)" = /No/Such/Filename
-then
-  PROG_REALPATH_M="readlink -m"
-  AC_MSG_RESULT([$PROG_REALPATH_M])
-else
-  AC_MSG_RESULT([FAILURE])
-  echo 'No useful realpath -m or readlink -m available' >&2
-  exit 1
-fi
-AC_SUBST([PROG_REALPATH_M])
+AX_CHECK_PROGS_TEST([PROG_REALPATH_M],
+  ['realpath -m' 'readlink -m'],
+  [test "$($try /No/Such/Filename 2>/dev/null)" = /No/Such/Filename])
 
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-ldl':
