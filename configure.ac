@@ -35,39 +35,41 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MKDIR_P
 
-# Set PROG_REALPATH_DEFAULT
+# Set PROG_REALPATH_DEFAULT.  Spaces separate command from option flags.
 AC_MSG_CHECKING([[for realpath (all but last component must exist)]])
-if test "$(realpath /bin/NoSuchFile 2>/dev/null)" = /bin/NoSuchFile
-then
-  PROG_REALPATH_DEFAULT=realpath
-  AC_MSG_RESULT([$PROG_REALPATH_DEFAULT])
-elif test "$(readlink -f /bin/NoSuchFile 2>/dev/null)" = /bin/NoSuchFile
-then
-  PROG_REALPATH_DEFAULT="readlink -f"
-  AC_MSG_RESULT([$PROG_REALPATH_DEFAULT])
-else
+result=''
+for try in 'realpath' 'readlink -f' ; do
+  if test "$($try /bin/NoSuchFile 2>/dev/null)" = /bin/NoSuchFile ; then
+    result="$try"
+    AC_MSG_RESULT([$result])
+    break
+  fi
+done
+if test "$result" = '' ; then
   AC_MSG_RESULT([FAILURE])
-  echo 'No useful realpath or readlink available' >&2
+  echo 'No useful command available' >&2
   exit 1
 fi
+PROG_REALPATH_DEFAULT="$result"
 AC_SUBST([PROG_REALPATH_DEFAULT])
 
-# Set PROG_REALPATH_E, normally "realpath -e"
+# Set PROG_REALPATH_E.  Spaces separate command from option flags.
 AC_MSG_CHECKING([[for realpath -e (all components must exist)]])
-if realpath -e /bin/sh 2>/dev/null
-then
-  PROG_REALPATH_E='realpath -e'
-  AC_MSG_RESULT([$PROG_REALPATH_E])
-elif readlink -e /bin/sh 2>/dev/null
-then
-  PROG_REALPATH_E="readlink -e"
-  AC_MSG_RESULT([$PROG_REALPATH_E])
-else
+result=''
+for try in 'realpath -e' 'readlink -e' ; do
+  if $try /bin/sh 2>/dev/null ; then
+    result="$try"
+    AC_MSG_RESULT([$result])
+    break
+  fi
+done
+if test "$result" = '' ; then
   AC_MSG_RESULT([FAILURE])
-  echo 'No useful realpath -e or readlink -e available' >&2
+  echo 'No useful command available' >&2
   exit 1
 fi
-AC_SUBST([PROG_REALPATH_E])
+PROG_REALPATH_E="$result"
+AC_SUBST([PROG_REALPATH_DEFAULT])
 
 # Set PROG_REALPATH_M, normally "realpath -m"
 AC_MSG_CHECKING([[for realpath -m (no components need exist)]])
