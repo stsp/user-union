@@ -53,13 +53,17 @@ PROG_REALPATH=realpath
 PROG_REALPATH_E='realpath -e'
 PROG_REALPATH_M='realpath -m'
 
+realpath_normal() { $PROG_REALPATH "$@" ; }
+realpath_e() { $PROG_REALPATH_E "$@" ; }
+realpath_m() { $PROG_REALPATH_M "$@" ; }
+
 add_branch() {
   # $1 is the overlay, $2 is the underlay, $3 is the mount point
   if [ -n "$USER_UNION_DEBUG" ] ; then 
     printf "user-union: add_branch: 1=$1 ; 2=$2 ; 3=$3\n" >&2
   fi
   if [ -n "$1" ]; then
-    RP="$($PROG_REALPATH "$1")"
+    RP="$(realpath_normal "$1")"
     if [ $? != 0 ]; then
       echo "Unable to canonicalize path $1"
       exit 1
@@ -67,7 +71,7 @@ add_branch() {
     export USER_UNION_${MY_USER_UNION_CNT}_OVERLAY="$RP"
   fi
   if [ -n "$2" ]; then
-    RP="$($PROG_REALPATH_E "$2")"
+    RP="$(realpath_e "$2")"
     if [ $? != 0 ]; then
       echo "Unable to canonicalize path $2"
       exit 1
@@ -79,7 +83,7 @@ add_branch() {
     MP=""
   fi
   if [ -n "$3" ]; then
-    RP="$($PROG_REALPATH_M "$3")"
+    RP="$(realpath_m "$3")"
     if [ $? != 0 ]; then
       echo "Unable to canonicalize path $3"
       exit 1
