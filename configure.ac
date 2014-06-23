@@ -29,35 +29,14 @@ LT_PREREQ([2.2.6])
 # relocatable so that it can override anything
 LT_INIT([disable-static pic-only dlopen])
 
+# Bring in specific .m4 macros, now that automake and libtool are enabled:
+m4_include([m4/ax_check_progs_test.m4])
+
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MKDIR_P
-
-# Define helper macro:
-#   AC_CHECK_PROGS_TEST(variable_set,list_of_alternative_commands,command_test)
-# This is provided a list of alternative commands (with arguments);
-# each is tested in turn, and the result is stored in variable_set.
-m4_define([AX_CHECK_PROGS_TEST],[
-if test -z "${$1}" ; then
-  result=''
-  for try in $2 ; do
-    if $3 ; then
-      result="$try"
-      AC_MSG_RESULT([$result])
-      break
-    fi
-  done
-  if test "$result" = '' ; then
-    AC_MSG_RESULT([FAILURE])
-    echo 'No useful command available' >&2
-    exit 1
-  fi
-  $1="$result"
-fi
-AC_SUBST([$1])
-])
 
 # Set PROG_REALPATH, normally "realpath"
 AC_MSG_CHECKING([[for realpath (all but last component must exist)]])
