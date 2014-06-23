@@ -49,10 +49,6 @@ else
 fi
 MY_USER_UNION_CNT="$MY_USER_UNION_CNT_INIT"
 
-PROG_REALPATH=realpath
-PROG_REALPATH_E='realpath -e'
-PROG_REALPATH_M='realpath -m'
-
 realpath_normal() { $PROG_REALPATH "$@" ; }
 realpath_e() { $PROG_REALPATH_E "$@" ; }
 realpath_m() { $PROG_REALPATH_M "$@" ; }

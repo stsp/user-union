@@ -27,9 +27,9 @@ user-union: user-union.txt $(my_library_la_name)
 	$(SED) -e 's!# YOU MAY EDIT.*!# DO NOT EDIT - GENERATED FILE!' \
           -e 's!^\(my_library_la_name\)=\(.*\)!\1="$(my_library_la_name)"!' \
           -e 's!^\(libdir\)=.*!\1="$(libdir)"!' \
-          -e 's!^\(PROG_REALPATH\)=.*!\1="$(PROG_REALPATH)"!' \
-          -e 's!^\(PROG_REALPATH_E\)=.*!\1="$(PROG_REALPATH_E)"!' \
-          -e 's!^\(PROG_REALPATH_M\)=.*!\1="$(PROG_REALPATH_M)"!' \
+          -e 's!$$PROG_REALPATH !$(PROG_REALPATH) !' \
+          -e 's!$$PROG_REALPATH_E !$(PROG_REALPATH_E) !' \
+          -e 's!$$PROG_REALPATH_M !$(PROG_REALPATH_M) !' \
           < $(srcdir)/user-union.txt > user-union
 	chmod a+rx user-union
 
