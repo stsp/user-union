@@ -22,14 +22,15 @@ EXTRA_DIST = user-union.txt fso_stat m4/NOTES m4/ax_check_progs_test.m4
 
 # We build user-union in the makefile, instead of having a "user-union.in"
 # read by configure, so that "make build" can override prefix, libdir, etc.
+# We reuse the @varname@ replacement convention for consistency.
 user-union: user-union.txt $(my_library_la_name)
 	rm -f user-union
 	$(SED) -e 's!# YOU MAY EDIT.*!# DO NOT EDIT - GENERATED FILE!' \
-          -e 's!^\(my_library_la_name\)=\(.*\)!\1="$(my_library_la_name)"!' \
-          -e 's!^\(libdir\)=.*!\1="$(libdir)"!' \
-          -e 's!$$PROG_REALPATH !$(PROG_REALPATH) !' \
-          -e 's!$$PROG_REALPATH_E !$(PROG_REALPATH_E) !' \
-          -e 's!$$PROG_REALPATH_M !$(PROG_REALPATH_M) !' \
+          -e 's!@my_library_la_name[@]!$(my_library_la_name)!g' \
+          -e 's!@libdir[@]!$(libdir)!g' \
+          -e 's!@PROG_REALPATH[@]!$(PROG_REALPATH)!g' \
+          -e 's!@PROG_REALPATH_E[@]!$(PROG_REALPATH_E)!g' \
+          -e 's!@PROG_REALPATH_M[@]!$(PROG_REALPATH_M)!g' \
           < $(srcdir)/user-union.txt > user-union
 	chmod a+rx user-union
 

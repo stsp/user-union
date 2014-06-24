@@ -12,8 +12,8 @@
 
 
 # These are configured by "make" during building.
-my_library_la_name=XYZ
-libdir=XYZ
+my_library_la_name='@my_library_la_name@'
+libdir='@libdir@'
 
 OVERLAY_DIRECTORY=""
 UNDERLAY_DIRECTORY=""
@@ -49,9 +49,9 @@ else
 fi
 MY_USER_UNION_CNT="$MY_USER_UNION_CNT_INIT"
 
-realpath_normal() { $PROG_REALPATH "$@" ; }
-realpath_e() { $PROG_REALPATH_E "$@" ; }
-realpath_m() { $PROG_REALPATH_M "$@" ; }
+realpath_normal() { @PROG_REALPATH@ "$@" ; }
+realpath_e() { @PROG_REALPATH_E@ "$@" ; }
+realpath_m() { @PROG_REALPATH_M@ "$@" ; }
 
 add_branch() {
   # $1 is the overlay, $2 is the underlay, $3 is the mount point
