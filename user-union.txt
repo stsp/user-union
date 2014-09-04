@@ -49,9 +49,29 @@ else
 fi
 MY_USER_UNION_CNT="$MY_USER_UNION_CNT_INIT"
 
-realpath_normal() { @PROG_REALPATH@ "$@" ; }
-realpath_e() { @PROG_REALPATH_E@ "$@" ; }
-realpath_m() { @PROG_REALPATH_M@ "$@" ; }
+realpath_normal() {
+  if [ $# -ge 1 -a "${1:0:1}" != "/" ]; then
+    @PROG_REALPATH@ "$@"
+  else
+    echo "$*"
+  fi
+}
+
+realpath_e() {
+  if [ $# -ge 1 -a "${1:0:1}" != "/" ]; then
+    @PROG_REALPATH_E@ "$@"
+  else
+    echo "$*"
+  fi
+}
+
+realpath_m() {
+  if [ $# -ge 1 -a "${1:0:1}" != "/" ]; then
+    @PROG_REALPATH_M@ "$@"
+  else
+    echo "$*"
+  fi
+}
 
 add_branch() {
   # $1 is the overlay, $2 is the underlay, $3 is the mount point
