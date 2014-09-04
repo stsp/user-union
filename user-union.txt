@@ -53,7 +53,7 @@ realpath_normal() {
   if [ $# -ge 1 -a "${1:0:1}" != "/" ]; then
     @PROG_REALPATH@ "$@"
   else
-    echo "$*"
+    printf '%s' "$*"
   fi
 }
 
@@ -61,7 +61,7 @@ realpath_e() {
   if [ $# -ge 1 -a "${1:0:1}" != "/" ]; then
     @PROG_REALPATH_E@ "$@"
   else
-    echo "$*"
+    printf '%s' "$*"
   fi
 }
 
@@ -69,7 +69,7 @@ realpath_m() {
   if [ $# -ge 1 -a "${1:0:1}" != "/" ]; then
     @PROG_REALPATH_M@ "$@"
   else
-    echo "$*"
+    printf '%s' "$*"
   fi
 }
 
