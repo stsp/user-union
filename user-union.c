@@ -1777,6 +1777,12 @@ WRAP64(int, creat, creat, \
 WRAP(void *, dlopen, dlopen, (const char *path, int flag), (path, flag), \
   SKIP_UNSLASHED,)
 
+/* Under uClibc it is unsafe to wrap these functions.
+ * They can be intercepted from within the system() call, which is
+ * after fork(). Unfortunately uclibc doesn't sanitize its mutexes
+ * on fork(), so calling most library funtions, like malloc() or strdup(),
+ * may deadlock. */
+#ifndef __UCLIBC__
 WRAP(int, execve, execve, \
      (const char* path, char* const argv[], char* const envp[]), \
      (path, argv, envp), SKIP_UNSLASHED,)
@@ -1784,6 +1790,7 @@ WRAP(int, execv, execv, (const char *path, char *const argv[]), \
        (path, argv), SKIP_UNSLASHED,)
 WRAP(int, execvp, execvp, (const char *path, char *const argv[]), \
        (path, argv), SKIP_UNSLASHED,)
+#endif
 
 // TODO: Add these exec* functions.  These have a variable number of
 // arguments, making them more work, so I haven't handled them yet:
