@@ -185,6 +185,108 @@ int debug_level = 0;
 // GNU C library doesn't normally let us redirect its internal
 // calls to open(), etc., so we have to wrap functions like fopen() ourselves:
 #define WRAP_USERS 1
+
+#ifndef __UCLIBC__
+static void *dl_handle;
+
+static void __attribute__((constructor)) initialize(void)
+{
+  dl_handle = dlmopen(LM_ID_NEWLM, "libc.so.6", RTLD_NOW | RTLD_LOCAL |
+      RTLD_DEEPBIND);
+}
+
+static void __attribute__((destructor)) finalize(void)
+{
+  if (dl_handle) {
+    dlclose(dl_handle);
+    dl_handle = NULL;
+  }
+}
+
+#define __C_WRP(RTYPE, SYM, DEF_ARGS, ORIG_CODE, NEW_CODE) \
+static RTYPE wrp_##SYM DEF_ARGS \
+{ \
+  static RTYPE (*orig_##SYM) DEF_ARGS; \
+  static RTYPE (*new_##SYM) DEF_ARGS; \
+  if (!orig_##SYM) \
+    orig_##SYM = dlsym(RTLD_NEXT, __STRING(SYM)); \
+  if (!orig_##SYM) { \
+    fprintf(stderr, "FAIL, cannot resolve symbol " __STRING(SYM) "\n"); \
+    _exit(1); \
+  } \
+  if (dl_handle && !new_##SYM) \
+    new_##SYM = dlsym(dl_handle, __STRING(SYM)); \
+  if (!new_##SYM || !dl_handle) \
+    ORIG_CODE; \
+  NEW_CODE; \
+}
+
+#define C_WRP(RTYPE, SYM, DEF_ARGS, CALL_ARGS) \
+__C_WRP(RTYPE, SYM, DEF_ARGS, return orig_##SYM CALL_ARGS, \
+    return new_##SYM CALL_ARGS) \
+inline __attribute__((visibility("hidden"))) RTYPE SYM DEF_ARGS \
+{ \
+  return wrp_##SYM CALL_ARGS; \
+}
+
+C_WRP(void *, malloc, (size_t size), (size))
+C_WRP(void, free, (void *ptr), (ptr))
+#undef strdup
+C_WRP(char *, strdup, (const char *s), (s))
+/* the following are not making problems, but are not listed as
+ * signal-safe by posix, either. So better wrap them too. */
+C_WRP(char *, dirname, (char *path), (path))
+#define exit _exit
+C_WRP(size_t, fwrite, (const void *ptr, size_t size, size_t nmemb,
+                     FILE *stream), (ptr, size, nmemb, stream))
+C_WRP(char *, getcwd, (char *buf, size_t size), (buf, size))
+C_WRP(void *, memcpy, (void *dest, const void *src, size_t n), (dest, src, n))
+C_WRP(void *, memmove, (void *dest, const void *src, size_t n), (dest, src, n))
+#undef strchr
+C_WRP(char *, strchr, (const char *s, int c), (s, c))
+#undef strcmp
+C_WRP(int, strcmp, (const char *s1, const char *s2), (s1, s2))
+#undef strcpy
+C_WRP(char *, strcpy, (char *s1, const char *s2), (s1, s2))
+C_WRP(char *, strerror, (int num), (num))
+C_WRP(size_t, strlen, (const char *s), (s))
+#undef strncmp
+C_WRP(int, strncmp, (const char *s1, const char *s2, size_t n), (s1, s2, n))
+C_WRP(char *, strncpy, (char *s1, const char *s2, size_t n), (s1, s2, n))
+C_WRP(char *, strrchr, (const char *s, int c), (s, c))
+
+static FILE **my_stderr;
+static int (*orig_fprintf)(FILE *stream, const char *format, ...);
+__C_WRP(int, vfprintf, (FILE *stream, const char *format, va_list ap),
+    return orig_vfprintf(stream, format, ap), do {
+  if (stream != stderr) {
+    orig_fprintf(stderr, "FAIL, unsupported fprintf, please report bug\n");
+    exit(1);
+  }
+  if (!my_stderr)
+    my_stderr = dlsym(dl_handle, "stderr");
+  if (!my_stderr) {
+    orig_fprintf(stderr, "FAIL, stderr does not resolve\n");
+    exit(1);
+  }
+  return new_vfprintf(*my_stderr, format, ap);
+} while (0))
+
+inline __attribute__((visibility("hidden")))
+	int fprintf(FILE *stream, const char *format, ...)
+{
+  int ret;
+  va_list ap;
+  if (!orig_fprintf)
+    orig_fprintf = dlsym(RTLD_NEXT, "fprintf");
+  if (!orig_fprintf)
+    abort();
+  va_start(ap, format);
+  ret = wrp_vfprintf(stream, format, ap);
+  va_end(ap);
+  return ret;
+}
+#endif
 #endif
 
 // Use this to mark intentionally-unused variables.
