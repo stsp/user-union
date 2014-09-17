@@ -416,10 +416,11 @@ static int num_branches;
 static char whitelist_prefix[BIGBUF];
 
 // Set up branches by reading in the environment variable.
-static void __attribute__((constructor)) initialize_branchlist(void) {
+static struct branch *create_branchlist(void)
+{
   char *endp;
   int i, j, cnt;
-  struct branch *current_branch;
+  struct branch *current_branch, *branchlist;
   char var_name[128];
   char *str;
 
@@ -427,7 +428,7 @@ static void __attribute__((constructor)) initialize_branchlist(void) {
   if (!str || (str[0] == '\0')) {
     fprintf(stderr,
          "user-union: Warning. Environment variable USER_UNION_PRIV_DIR not set.\n");
-    return;
+    return NULL;
   }
   snprintf(whitelist_prefix, sizeof(whitelist_prefix), "%s/whitelist", str);
 
@@ -447,14 +448,14 @@ static void __attribute__((constructor)) initialize_branchlist(void) {
   if (!str || (str[0] == '\0')) {
     fprintf(stderr,
          "user-union: Warning. Environment variable USER_UNION_CNT not set.\n");
-    return;
+    return NULL;
   }
   cnt = strtol(str, &endp, 10);
   if (*endp) {
     fprintf(stderr,
          "user-union: Warning. Environment variable USER_UNION_CNT=%s wrong.\n",
          str);
-    return;
+    return NULL;
   }
 
   branchlist = malloc(sizeof(struct branch) * cnt);
@@ -534,6 +535,14 @@ static void __attribute__((constructor)) initialize_branchlist(void) {
     }
   }
 #endif
+  return branchlist;
+}
+
+static void __attribute__((constructor)) initialize_branchlist(void)
+{
+  branchlist = create_branchlist();
+  if (!branchlist)
+    exit(1);
 }
 
 // We will need to use internally some redirected functions, so that
