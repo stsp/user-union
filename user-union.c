@@ -416,7 +416,7 @@ static int num_branches;
 static char whitelist_prefix[BIGBUF];
 
 // Set up branches by reading in the environment variable.
-static void initialize_branchlist(void) {
+static void __attribute__((constructor)) initialize_branchlist(void) {
   char *endp;
   int i, j, cnt;
   struct branch *current_branch;
@@ -535,41 +535,6 @@ static void initialize_branchlist(void) {
   }
 #endif
 }
-
-
-// The following ensures that we initialize *exactly once* before
-// doing anything else, and that initialization *completes*
-// before *any* other operations occur.
-// Otherwise, if an application has multiple threads,
-// it might start initializing the library, and while that happens
-// another thread might start up and try to initialize the library
-// simultaneously.  Resulting in Bad Things.
-//
-// This may look inefficient, but the mutex lock/lock is extremely
-// efficient on most systems.. especially since in most cases it'll just
-// fall through (and if it doesn't, then we're using the lock!).
-// The guarded section merely checks if a single pointer is null,
-// and in most cases it's non-null (so nothing happens).
-// By inlining it, initialize_if_needed becomes really fast.
-// In any case, it's better to be a little slower but right, than
-// fast but occasionally failing in Mysterious Ways.
-//
-// I had originally tried to do this using GNU C's constructors, like this:
-// static void initialize_library(void) __attribute__ ((constructor(65535)));
-// That would have been a little more efficient.
-// However, they didn't work reliably for this purpose
-// (they would occasionally segfault).  They aren't portable anyway.
-// In contrast, this approach is really portable.
-
-static pthread_mutex_t are_currently_initializing = PTHREAD_MUTEX_INITIALIZER;
-
-static inline void initialize_if_needed(void) {
-  pthread_mutex_lock(&are_currently_initializing);
-  if (!branchlist) initialize_branchlist();
-  pthread_mutex_unlock(&are_currently_initializing);
-}
-
-
 
 // We will need to use internally some redirected functions, so that
 // we can directly manipulate the filesystem.  We declare them here,
@@ -772,6 +737,12 @@ static char *__redir_name(const char *pathname, int use)
 
   debug("redir_name begin: path=%s usage=%d\n", pathname, use);
 
+  // Check if initialized already
+  if (!branchlist) {
+    debug("not yet initialized\n");
+    return NULL;
+  }
+
   // Extract the primary use.  The "use" parameter is int,
   // not type "usage_t", because "use" is an OR'ed value that
   // combines both usage_t and the file descriptor to be used
@@ -792,10 +763,6 @@ static char *__redir_name(const char *pathname, int use)
     else
       use = READ;
   }
-
-  // Initialize, in case we haven't already:
-  // if (!branchlist) initialize_branchlist();
-  initialize_if_needed();
 
   // Canonicalize pathname - force it to absolute (not relative) name.
   // TODO: If we're given relative name, *AND* we have an *at function,
