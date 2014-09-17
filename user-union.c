@@ -155,9 +155,8 @@
 #include <ltdl.h>
 #endif
 
-// We use pthread.h for a simple mutex lock (we don't create threads).
-// This lock (see below) is used to ensure we initialize correctly.
-#include <pthread.h>
+#include "init.h"
+#include "user-union.h"
 
 // The following is for Cygwin:
 #ifndef RTLD_NEXT
@@ -176,9 +175,7 @@
 // We're doing a lot of subterfugue, so symbol visibility needs to be
 // reduced to *only* the symbols we are intentionally overriding.
 
-static int debug = 0;
-#define debug(...) do if (debug) fprintf(stderr, "user-union: " __VA_ARGS__); \
-    while (0)
+int debug_level = 0;
 
 #if defined(__linux__)
 
@@ -396,151 +393,14 @@ static inline char *prepend_override_prefix(char *s) {
 }
 
 
-// Branch handling - we need to know how to handle directories.
-// This data comes from environment variable USER_UNION.
-// This structure is actually more than we strictly need; I have hopes
-// to eventually expand the code to support multiple overlays, and
-// this structure supports that.
-
-struct branch {
-  char *overlay;
-  char **underlay;
-  int num_underlays;
-  char *mount_point;
-  int match_depth;
-};
-
 static struct branch *branchlist;
 static int num_branches;
 
 static char whitelist_prefix[BIGBUF];
 
-// Set up branches by reading in the environment variable.
-static struct branch *create_branchlist(void)
-{
-  char *endp;
-  int i, j, cnt;
-  struct branch *current_branch, *branchlist;
-  char var_name[128];
-  char *str;
-
-  str = getenv("USER_UNION_PRIV_DIR");
-  if (!str || (str[0] == '\0')) {
-    fprintf(stderr,
-         "user-union: Warning. Environment variable USER_UNION_PRIV_DIR not set.\n");
-    return NULL;
-  }
-  snprintf(whitelist_prefix, sizeof(whitelist_prefix), "%s/whitelist", str);
-
-  str = getenv("USER_UNION_DEBUG");
-  if (str && str[0]) {
-    cnt = strtol(str, &endp, 10);
-    if (*endp) {
-      fprintf(stderr,
-         "user-union: Warning. Environment variable USER_UNION_DEBUG=%s wrong.\n",
-         str);
-    } else {
-      debug = cnt;
-    }
-  }
-
-  str = getenv("USER_UNION_CNT");
-  if (!str || (str[0] == '\0')) {
-    fprintf(stderr,
-         "user-union: Warning. Environment variable USER_UNION_CNT not set.\n");
-    return NULL;
-  }
-  cnt = strtol(str, &endp, 10);
-  if (*endp) {
-    fprintf(stderr,
-         "user-union: Warning. Environment variable USER_UNION_CNT=%s wrong.\n",
-         str);
-    return NULL;
-  }
-
-  branchlist = malloc(sizeof(struct branch) * cnt);
-  num_branches = cnt;
-  for (i = 0; i < cnt; i++) {
-    int undl_cnt;
-    current_branch = branchlist + i;
-    snprintf(var_name, sizeof(var_name), "USER_UNION_%i_OVERLAY", i);
-    str = getenv(var_name);
-    if (!str || !str[0])
-      current_branch->overlay = NULL;
-    else
-      current_branch->overlay = str;
-
-    snprintf(var_name, sizeof(var_name), "USER_UNION_%i_MOUNT_POINT", i);
-    str = getenv(var_name);
-    if (!str || !str[0]) {
-      fprintf(stderr,
-         "user-union: FATAL. Environment variable %s not set.\n", var_name);
-      exit(1);
-    }
-    current_branch->mount_point = str;
-
-    snprintf(var_name, sizeof(var_name), "USER_UNION_%i_MATCH_DEPTH", i);
-    str = getenv(var_name);
-    if (!str || !str[0]) {
-      current_branch->match_depth = -1;
-    } else {
-      cnt = strtol(str, &endp, 10);
-      if (*endp) {
-        fprintf(stderr,
-           "user-union: FATAL. Environment variable %s=%s wrong.\n",
-           var_name, str);
-        exit(1);
-      }
-      current_branch->match_depth = cnt;
-    }
-
-    snprintf(var_name, sizeof(var_name), "USER_UNION_%i_UNDERLAY_CNT", i);
-    str = getenv(var_name);
-    if (!str || !str[0]) {
-      current_branch->num_underlays = 0;
-      current_branch->underlay = NULL;
-      continue;
-    }
-    undl_cnt = strtol(str, &endp, 10);
-    if (*endp) {
-      fprintf(stderr,
-         "user-union: FATAL. Environment variable %s=%s wrong.\n",
-         var_name, str);
-      exit(1);
-    }
-
-    current_branch->underlay = malloc(sizeof(char*) * undl_cnt);
-    current_branch->num_underlays = undl_cnt;
-    for (j = 0; j < undl_cnt; j++) {
-      snprintf(var_name, sizeof(var_name), "USER_UNION_%i_UNDERLAY_%i", i, j);
-      str = getenv(var_name);
-      if (!str || !str[0]) {
-        fprintf(stderr,
-           "user-union: FATAL. Environment variable %s not set.\n", var_name);
-        exit(1);
-      }
-      current_branch->underlay[j] = str;
-    }
-  }
-  // Complete.
-#ifdef DEBUG
-  debug("Completed setting branchlist.  Results:\n");
-  for (i = 0; i < num_branches; i++) {
-    current_branch = branchlist + i;
-    debug("Branch:\n");
-    debug("  Overlay: %s\n", current_branch->overlay);
-    debug("  Mount point: %s\n", current_branch->mount_point);
-    for (j = 0; j < current_branch->num_underlays; j++) {
-      debug("  Underlay: %s\n", current_branch->underlay[j]);
-    }
-  }
-#endif
-  return branchlist;
-}
-
 static void __attribute__((constructor)) initialize_branchlist(void)
 {
-  branchlist = create_branchlist();
+  branchlist = create_branchlist(whitelist_prefix, &num_branches);
   if (!branchlist)
     exit(1);
 }
@@ -745,12 +605,6 @@ static char *__redir_name(const char *pathname, int use)
 #endif
 
   debug("redir_name begin: path=%s usage=%d\n", pathname, use);
-
-  // Check if initialized already
-  if (!branchlist) {
-    debug("not yet initialized\n");
-    return NULL;
-  }
 
   // Extract the primary use.  The "use" parameter is int,
   // not type "usage_t", because "use" is an OR'ed value that
@@ -1121,6 +975,12 @@ static char *redir_name(const char *pathname, int use)
   struct stat mystats;
   int result;
   int is_readlink = ((use & USAGE_T_MASK) == READLINK);
+
+  // Check if initialized already
+  if (!branchlist) {
+    debug("not yet initialized\n");
+    return NULL;
+  }
 
   if (!pathname) return NULL; // Shouldn't happen.
 

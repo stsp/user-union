@@ -6,7 +6,7 @@ AM_CFLAGS = $(CWARNINGFLAGS)
 
 my_library_la_name = libuser-union-0.12.la
 lib_LTLIBRARIES = $(my_library_la_name)
-libuser_union_0_12_la_SOURCES = user-union.c
+libuser_union_0_12_la_SOURCES = user-union.c init.c
 # Cygwin and others require this option to build shared libraries:
 libuser_union_0_12_la_LDFLAGS = -no-undefined
 
