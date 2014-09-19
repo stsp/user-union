@@ -116,6 +116,26 @@ int f() {
 CFLAGS="$ORIGINAL_CFLAGS"
 AC_SUBST([CWARNINGFLAGS])
 
+
+AC_MSG_CHECKING([[to determine if signal safety wrapper should be enabled]])
+AC_LINK_IFELSE(
+[AC_LANG_PROGRAM([[
+#ifdef __linux__
+#ifndef __UCLIBC__
+static void __attribute__((constructor)) initialize(void) {}
+static void __attribute__((destructor)) finalize(void) {}
+#else
+#error
+#endif
+#else
+#error
+#endif
+]])],
+  [AC_MSG_RESULT([yes])
+   AC_DEFINE([SIGNAL_SAFETY_WRAPPER], 1, [Wrap C runtime functions that are not necessarily safe from signals (per POSIX) and that are used internally by this library.])],
+  [AC_MSG_RESULT([no])])
+
+
 AC_ARG_ENABLE(debug,
   AC_HELP_STRING([--enable-debug], [compile with debug support]),
   CFLAGS="$CFLAGS -ggdb3")

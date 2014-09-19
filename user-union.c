@@ -178,15 +178,15 @@
 int debug_level = 0;
 
 #if defined(__linux__)
-
 // Special stuff to handle GNU C library.
 // Technically, that's not the same as __linux__.
 
 // GNU C library doesn't normally let us redirect its internal
 // calls to open(), etc., so we have to wrap functions like fopen() ourselves:
 #define WRAP_USERS 1
+#endif
 
-#ifndef __UCLIBC__
+#ifdef SIGNAL_SAFETY_WRAPPER
 static void *dl_handle;
 
 static void __attribute__((constructor)) initialize(void)
@@ -286,7 +286,6 @@ inline __attribute__((visibility("hidden")))
   va_end(ap);
   return ret;
 }
-#endif
 #endif
 
 // Use this to mark intentionally-unused variables.
