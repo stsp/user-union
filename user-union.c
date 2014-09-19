@@ -191,8 +191,9 @@ static void *dl_handle;
 
 static void __attribute__((constructor)) initialize(void)
 {
-  dl_handle = dlmopen(LM_ID_NEWLM, "libc.so.6", RTLD_NOW | RTLD_LOCAL |
-      RTLD_DEEPBIND);
+  // SIGNAL_SAFETY_WRAPPED_LIBNAME is typically "libc.so.6"
+  dl_handle = dlmopen(LM_ID_NEWLM, SIGNAL_SAFETY_WRAPPED_LIBNAME,
+      RTLD_NOW | RTLD_LOCAL | RTLD_DEEPBIND);
 }
 
 static void __attribute__((destructor)) finalize(void)

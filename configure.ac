@@ -142,9 +142,16 @@ static void __attribute__((destructor)) finalize(void) {}
     [enable_signal_safety_wrapper="no"])])
 AC_MSG_RESULT([$enable_signal_safety_wrapper])
 AS_IF([test "x$enable_signal_safety_wrapper" = "xyes"],
-  [AC_DEFINE([SIGNAL_SAFETY_WRAPPER], 1, [Wrap C runtime functions that are not necessarily safe from signals (per POSIX) and that are used internally by this library.])])
-
-
+  [AC_DEFINE([SIGNAL_SAFETY_WRAPPER], 1, [Wrap C runtime functions that are not necessarily safe from signals (per POSIX) and that are used internally by this library.])
+  AC_MSG_CHECKING([[for name of signal safety wrapped library]])
+  AC_ARG_VAR([SIGNAL_SAFETY_WRAPPED_LIBNAME],
+    [Name of library to invoke by signal safety wrapper])
+  AS_IF([test "x$SIGNAL_SAFETY_WRAPPED_LIBNAME" = "x"],
+        [SIGNAL_SAFETY_WRAPPED_LIBNAME="libc.so.6"])
+  AC_DEFINE_UNQUOTED([SIGNAL_SAFETY_WRAPPED_LIBNAME],
+    ["$SIGNAL_SAFETY_WRAPPED_LIBNAME"],
+    [Name of library to invoke by signal safety wrapper])
+  AC_MSG_RESULT([$SIGNAL_SAFETY_WRAPPED_LIBNAME])])
 
 AC_ARG_ENABLE(debug,
   AC_HELP_STRING([--enable-debug], [compile with debug support]),
