@@ -204,6 +204,19 @@ static void __attribute__((destructor)) finalize(void)
   }
 }
 
+/* below we wrap the functions that are not specified by POSIX to be
+ * signal-safe. This allows us to use them even if we hooked some
+ * call that goes from inside the C library. This is necessary to
+ * avoid the recursion inside calls that use mutex, and even without
+ * any recursion, calling such functions is unsafe because this can
+ * happen after fork() (inside system() or popen() calls), and after
+ * fork() all the thread-shared resources inside libc are in an
+ * inconsistent state (most importantly, the mutexes itself).
+ * This is most prominent on uClibc that does not care to use the
+ * private, unhookable definitions in the critical places the way
+ * glibc does. Unfortunately, these wrappers do not work on uClibc
+ * yet, so for uClibc we also disable the exec* wrappers. */
+
 #define __C_WRP(RTYPE, SYM, DEF_ARGS, ORIG_CODE, NEW_CODE) \
 static RTYPE wrp_##SYM DEF_ARGS \
 { \
@@ -230,16 +243,23 @@ inline __attribute__((visibility("hidden"))) RTYPE SYM DEF_ARGS \
   return wrp_##SYM CALL_ARGS; \
 }
 
+/* malloc() and free() are protected with mutex. They are first-class
+ * offenders. */
 C_WRP(void *, malloc, (size_t size), (size))
 C_WRP(void, free, (void *ptr), (ptr))
+/* strdup() uses malloc() */
 #undef strdup
 C_WRP(char *, strdup, (const char *s), (s))
+
+/* exit() can call atexit() callbacks */
+#define exit _exit
+
+/* the following are using the static buffer */
+C_WRP(char *, dirname, (char *path), (path))
+C_WRP(char *, strerror, (int num), (num))
+
 /* the following are not making problems, but are not listed as
  * signal-safe by posix, either. So better wrap them too. */
-C_WRP(char *, dirname, (char *path), (path))
-#define exit _exit
-C_WRP(size_t, fwrite, (const void *ptr, size_t size, size_t nmemb,
-                     FILE *stream), (ptr, size, nmemb, stream))
 C_WRP(char *, getcwd, (char *buf, size_t size), (buf, size))
 C_WRP(void *, memcpy, (void *dest, const void *src, size_t n), (dest, src, n))
 C_WRP(void *, memmove, (void *dest, const void *src, size_t n), (dest, src, n))
@@ -249,12 +269,17 @@ C_WRP(char *, strchr, (const char *s, int c), (s, c))
 C_WRP(int, strcmp, (const char *s1, const char *s2), (s1, s2))
 #undef strcpy
 C_WRP(char *, strcpy, (char *s1, const char *s2), (s1, s2))
-C_WRP(char *, strerror, (int num), (num))
 C_WRP(size_t, strlen, (const char *s), (s))
 #undef strncmp
 C_WRP(int, strncmp, (const char *s1, const char *s2, size_t n), (s1, s2, n))
 C_WRP(char *, strncpy, (char *s1, const char *s2, size_t n), (s1, s2, n))
 C_WRP(char *, strrchr, (const char *s, int c), (s, c))
+
+/* fprintf() and other stdio functions are protected with mutex too, and
+ * so they are the first-class offenders. But we use it only for debug
+ * output, so wrap only stderr for now. */
+C_WRP(size_t, fwrite, (const void *ptr, size_t size, size_t nmemb,
+                     FILE *stream), (ptr, size, nmemb, stream))
 
 static FILE **my_stderr;
 static int (*orig_fprintf)(FILE *stream, const char *format, ...);
