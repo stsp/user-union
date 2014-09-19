@@ -118,12 +118,12 @@ AC_SUBST([CWARNINGFLAGS])
 
 
 
-AC_MSG_CHECKING([[to determine if signal safety wrapper should be enabled]])
-AC_ARG_ENABLE([signal-safety-wrapper],
-  [AC_HELP_STRING([--enable-signal-safety-wrapper],
-                  [use signal safety wrapper])],
-  [AS_IF([test "x$signal_safety_wrapper" != "xyes"],
-     [enable_signal_safety_wrapper="no"])],
+AC_MSG_CHECKING([[to determine if private libc namespace should be enabled]])
+AC_ARG_ENABLE([private-libc-namespace],
+  [AC_HELP_STRING([--enable-private-libc-namespace],
+                  [use private libc namespace wrapper (to address the unsafe env where only signal-safe functions are guaranteed to work)])],
+  [AS_IF([test "x$private_libc_namespace" != "xyes"],
+     [enable_private_libc_namespace="no"])],
   [AC_COMPILE_IFELSE(
     [AC_LANG_PROGRAM([[#include <dlfcn.h>]],
 [
@@ -131,21 +131,21 @@ void *dl_handle = dlmopen(LM_ID_NEWLM,
  "libc.so.6",
        RTLD_NOW | RTLD_LOCAL | RTLD_DEEPBIND);
 ])],
-    [enable_signal_safety_wrapper="yes"],
-    [enable_signal_safety_wrapper="no"])])
-AC_MSG_RESULT([$enable_signal_safety_wrapper])
-AS_IF([test "x$enable_signal_safety_wrapper" = "xyes"],
-  [AC_DEFINE([SIGNAL_SAFETY_WRAPPER], 1, [Wrap C runtime functions that are not necessarily safe from signals (per POSIX) and that are used internally by this library.])
+    [enable_private_libc_namespace="yes"],
+    [enable_private_libc_namespace="no"])])
+AC_MSG_RESULT([$enable_private_libc_namespace])
+AS_IF([test "x$enable_private_libc_namespace" = "xyes"],
+  [AC_DEFINE([PRIVATE_LIBC_NAMESPACE], 1, [Wrap C runtime functions that are not necessarily safe from signals (per POSIX) and that are used internally by this library.])
 
-  AC_MSG_CHECKING([[for name of signal safety wrapped library]])
-  AC_ARG_VAR([SIGNAL_SAFETY_WRAPPED_LIBNAME],
-    [Name of library to invoke by signal safety wrapper])
-  AS_IF([test "x$SIGNAL_SAFETY_WRAPPED_LIBNAME" = "x"],
-        [SIGNAL_SAFETY_WRAPPED_LIBNAME="libc.so.6"])
-  AC_DEFINE_UNQUOTED([SIGNAL_SAFETY_WRAPPED_LIBNAME],
-    ["$SIGNAL_SAFETY_WRAPPED_LIBNAME"],
-    [Name of library to invoke by signal safety wrapper])
-  AC_MSG_RESULT([$SIGNAL_SAFETY_WRAPPED_LIBNAME])])
+  AC_MSG_CHECKING([[for name of private libc wrapped library]])
+  AC_ARG_VAR([PRIVATE_LIBC_NAMESPACE_LIBNAME],
+    [Name of library to invoke by private libc namespace wrapper])
+  AS_IF([test "x$PRIVATE_LIBC_NAMESPACE_LIBNAME" = "x"],
+        [PRIVATE_LIBC_NAMESPACE_LIBNAME="libc.so.6"])
+  AC_DEFINE_UNQUOTED([PRIVATE_LIBC_NAMESPACE_LIBNAME],
+    ["$PRIVATE_LIBC_NAMESPACE_LIBNAME"],
+    [Name of library to invoke by private libc namespace wrapper])
+  AC_MSG_RESULT([$PRIVATE_LIBC_NAMESPACE_LIBNAME])])
 
 AC_ARG_ENABLE(debug,
   AC_HELP_STRING([--enable-debug], [compile with debug support]),

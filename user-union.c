@@ -186,13 +186,13 @@ int debug_level = 0;
 #define WRAP_USERS 1
 #endif
 
-#ifdef SIGNAL_SAFETY_WRAPPER
+#ifdef PRIVATE_LIBC_NAMESPACE
 static void *dl_handle;
 
 static void __attribute__((constructor)) initialize(void)
 {
-  // SIGNAL_SAFETY_WRAPPED_LIBNAME is typically "libc.so.6"
-  dl_handle = dlmopen(LM_ID_NEWLM, SIGNAL_SAFETY_WRAPPED_LIBNAME,
+  // PRIVATE_LIBC_NAMESPACE_LIBNAME is typically "libc.so.6"
+  dl_handle = dlmopen(LM_ID_NEWLM, PRIVATE_LIBC_NAMESPACE_LIBNAME,
       RTLD_NOW | RTLD_LOCAL | RTLD_DEEPBIND);
 }
 
