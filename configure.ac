@@ -104,7 +104,7 @@ ORIGINAL_CFLAGS="$CFLAGS"
 CFLAGS="$CFLAGS $TRY_CWARNINGFLAGS"
 AC_MSG_CHECKING([[for gcc warning flags]])
 AC_LINK_IFELSE(
-[AC_LANG_PROGRAM([[
+  [AC_LANG_PROGRAM([[
 #include <stdio.h>
 int f() {
   return 0;
@@ -118,31 +118,25 @@ AC_SUBST([CWARNINGFLAGS])
 
 
 
-
 AC_MSG_CHECKING([[to determine if signal safety wrapper should be enabled]])
 AC_ARG_ENABLE([signal-safety-wrapper],
   [AC_HELP_STRING([--enable-signal-safety-wrapper],
                   [use signal safety wrapper])],
   [AS_IF([test "x$signal_safety_wrapper" != "xyes"],
      [enable_signal_safety_wrapper="no"])],
-  [AC_LINK_IFELSE(
-    [AC_LANG_PROGRAM([[
-#ifdef __linux__
-#ifndef __UCLIBC__
-static void __attribute__((constructor)) initialize(void) {}
-static void __attribute__((destructor)) finalize(void) {}
-#else
-#error
-#endif
-#else
-#error
-#endif
-]])],
+  [AC_COMPILE_IFELSE(
+    [AC_LANG_PROGRAM([[#include <dlfcn.h>]],
+[
+void *dl_handle = dlmopen(LM_ID_NEWLM,
+ "libc.so.6",
+       RTLD_NOW | RTLD_LOCAL | RTLD_DEEPBIND);
+])],
     [enable_signal_safety_wrapper="yes"],
     [enable_signal_safety_wrapper="no"])])
 AC_MSG_RESULT([$enable_signal_safety_wrapper])
 AS_IF([test "x$enable_signal_safety_wrapper" = "xyes"],
   [AC_DEFINE([SIGNAL_SAFETY_WRAPPER], 1, [Wrap C runtime functions that are not necessarily safe from signals (per POSIX) and that are used internally by this library.])
+
   AC_MSG_CHECKING([[for name of signal safety wrapped library]])
   AC_ARG_VAR([SIGNAL_SAFETY_WRAPPED_LIBNAME],
     [Name of library to invoke by signal safety wrapper])
