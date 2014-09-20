@@ -112,8 +112,6 @@
 //       Currently we just claim that we're root.
 // TODO: Test to make it work with fakeroot.
 
-// Need this so GNU C library will support dlsym's RTLD_NEXT flag:
-#define _GNU_SOURCE
 // Need this for Apple MacOS X, to deal with weirdness in its "stat":
 #define _DARWIN_NO_64_BIT_INODE
 
