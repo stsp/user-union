@@ -8,30 +8,9 @@ AC_CONFIG_SRCDIR([user-union.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 
-# Determine if we should enable compiler extensions - must do this early.
-# We normally turn on the GNU extensions, but not others.
-AC_MSG_CHECKING([[to determine if we should enable all system extensions]])
-AC_ARG_ENABLE([all-system-extensions],
-  AC_HELP_STRING([--enable-all-system-extensions], [compile with all autoconf-supported system extensions (including all GNU extensions)]), [],
- [enable_all_system_extensions="no"])
-AS_IF([test "$enable_all_system_extensions" != "yes"],
- [enable_all_system_extensions="no"])
-AC_MSG_RESULT([$enable_all_system_extensions])
-AS_IF([test "$enable_all_system_extensions" = "yes"],
-  [AC_USE_SYSTEM_EXTENSIONS])
-
-AS_IF([test "$enable_all_system_extensions" != "yes"],
-  [AC_MSG_CHECKING([[to determine if we should enable GNU extensions]])
-  AC_ARG_ENABLE([gnu-extensions],
-   [AC_HELP_STRING([--enable-gnu-extensions], [compile with GNU extensions])],
-   [],
-   [enable_gnu_extensions="yes"])
-  AS_IF([test "$enable_gnu_extensions" != "yes"],
-   [enable_gnu_extensions="no"])
-  AC_MSG_RESULT([$enable_gnu_extensions])
-  AS_IF([test "$enable_gnu_extensions" = "yes"],
-    [AC_GNU_SOURCE])])
-
+# Turn on GNU extensions.  We must do this early.
+# Someday we may need to enable superset AC_USE_SYSTEM_EXTENSIONS instead.
+AC_GNU_SOURCE
 
 # Bring in automake.
 AM_INIT_AUTOMAKE([1.11 -Wall -Werror])
