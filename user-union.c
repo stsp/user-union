@@ -525,7 +525,8 @@ static char whitelist_prefix[BIGBUF];
 
 static void __attribute__((constructor)) initialize_branchlist(void)
 {
-  branchlist = create_branchlist(whitelist_prefix, &num_branches);
+  branchlist = create_branchlist(whitelist_prefix, sizeof(whitelist_prefix),
+    &num_branches);
   if (!branchlist)
     exit(1);
 }

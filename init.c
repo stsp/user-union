@@ -4,7 +4,8 @@
 #include "init.h"
 
 // Set up branches by reading in the environment variable.
-struct branch *create_branchlist(char *whitelist_prefix, int *r_num_br)
+struct branch *create_branchlist(char *whitelist_prefix, int wp_len,
+    int *r_num_br)
 {
   char *endp;
   int i, j, cnt, num_branches;
@@ -18,7 +19,7 @@ struct branch *create_branchlist(char *whitelist_prefix, int *r_num_br)
          "user-union: Warning. Environment variable USER_UNION_PRIV_DIR not set.\n");
     return NULL;
   }
-  snprintf(whitelist_prefix, sizeof(whitelist_prefix), "%s/whitelist", str);
+  snprintf(whitelist_prefix, wp_len, "%s/whitelist", str);
 
   str = getenv("USER_UNION_DEBUG");
   if (str && str[0]) {
