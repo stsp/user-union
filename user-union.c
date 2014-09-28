@@ -156,13 +156,18 @@
 #include "init.h"
 #include "user-union.h"
 
-// The following is for Cygwin:
+#ifdef __CYGWIN__
+/* https://cygwin.com/ml/cygwin/2011-01/msg00258.html
+ * RTLD_NEXT appears to be semi-unimplemented in Cygwin
+ * (a grep through the sources shows code for RTLD_NEXT in newlib but not
+ * in winsup).
+ *
+ * We define it by hands and use only for the functions defined in newlib,
+ * so it works for us pretty well. */
 #ifndef RTLD_NEXT
 #define RTLD_NEXT ((void *) -1L)
 #endif
-// If your system doesn't support RTLD_NEXT, one workaround is to do a
-// compile-time definition of RTLD_NEXT to refer to the underlying C library.
-// Or, get a real operating system :-).
+#endif
 
 // Coding style for C used here, to make it easier to read (in my opinion):
 // - Bracing is K&R (One True Brace Style), *even* for function headings.
