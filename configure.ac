@@ -11,6 +11,10 @@ AC_CONFIG_MACRO_DIR([m4])
 # Turn on GNU extensions.  We must do this early.
 # Someday we may need to enable superset AC_USE_SYSTEM_EXTENSIONS instead.
 AC_GNU_SOURCE
+# we use __VA_ARGS__ from C99
+AC_PROG_CC_C99
+# autoconf mistakenly puts -std=c99 into CC, not CFLAGS, and libtool ignores CC
+CFLAGS="$CFLAGS $ac_cv_prog_cc_c99"
 
 # Bring in automake.
 AM_INIT_AUTOMAKE([1.11 -Wall -Werror])
