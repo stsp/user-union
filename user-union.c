@@ -547,6 +547,7 @@ static int my_unlink(const char *path);
 static int my_lstat(const char *path, struct stat *buf);
 static ssize_t my_readlink(const char *path, char *buf, size_t bufsiz);
 static int my_symlink(const char *oldpath, const char *newpath);
+static int my_rename(const char *oldpath, const char *newpath);
 #if 0
 static DIR *my_opendir(const char *name);
 #endif
@@ -556,15 +557,32 @@ static DIR *my_opendir(const char *name);
 
 // TODO: Error handling.
 static void my_file_copy(const char *old, const char *new, mode_t mode) {
-  int oldfd = my_open64(old, O_RDONLY, 0);
-  int newfd = my_open64(new, O_WRONLY|O_CREAT, mode);
   char buffer[1024*512];
+  char *tmpname;
+  const char *suff = ".$#@";
+  int oldfd, newfd;
   int bytes_read;
+  oldfd = my_open64(old, O_RDONLY, 0);
+  if (oldfd == -1) {
+    fprintf(stderr, "FAIL. unable to open %s\n", old);
+    return;
+  }
+  tmpname = malloc(strlen(new) + strlen(suff) + 1);
+  strcpy(tmpname, new);
+  strcat(tmpname, suff);
+  newfd = my_open64(tmpname, O_WRONLY|O_CREAT|O_TRUNC, mode);
+  if (newfd == -1) {
+    fprintf(stderr, "FAIL. unable to open %s\n", tmpname);
+    goto done2;
+  }
   while ( (bytes_read = read(oldfd, buffer, sizeof(buffer))) > 0) {
     write(newfd, buffer, bytes_read);
   }
-  close(oldfd);
   close(newfd);
+  my_rename(tmpname, new);
+done2:
+  free(tmpname);
+  close(oldfd);
 }
 
 static bool my_file_exists(const char *pathname) {
@@ -1820,6 +1838,8 @@ MAKE_MY_FUNCTION(int, unlink, (const char *path), (path))
 MAKE_MY_FUNCTION(ssize_t, readlink, (const char *path, char *buf, \
                               size_t bufsiz), (path, buf, bufsiz))
 MAKE_MY_FUNCTION(int, symlink, (const char *oldpath, const char *path), \
+                              (oldpath, path))
+MAKE_MY_FUNCTION(int, rename, (const char *oldpath, const char *path), \
                               (oldpath, path))
 #if 0
 MAKE_MY_FUNCTION(DIR *, opendir, (const char *path), (path))
