@@ -181,6 +181,8 @@
 int debug_level = 0;
 
 #if defined(__linux__)
+#include <sys/sendfile.h>
+#define USE_SENDFILE 1
 // Special stuff to handle GNU C library.
 // Technically, that's not the same as __linux__.
 
@@ -556,16 +558,21 @@ static DIR *my_opendir(const char *name);
 
 
 // TODO: Error handling.
-static void my_file_copy(const char *old, const char *new, mode_t mode) {
+static int my_file_copy(const char *old, const char *new, mode_t mode) {
+#ifdef USE_SENDFILE
+  struct stat s;
+#else
   char buffer[1024*512];
+  int bytes_read, bytes_written;
+#endif
   char *tmpname;
   const char *suff = ".$#@";
-  int oldfd, newfd;
-  int bytes_read;
+  int oldfd, newfd, err = 0;
+  int bytes_total;
   oldfd = my_open64(old, O_RDONLY, 0);
   if (oldfd == -1) {
     fprintf(stderr, "FAIL. unable to open %s\n", old);
-    return;
+    return -1;
   }
   tmpname = malloc(strlen(new) + strlen(suff) + 1);
   strcpy(tmpname, new);
@@ -573,16 +580,36 @@ static void my_file_copy(const char *old, const char *new, mode_t mode) {
   newfd = my_open64(tmpname, O_WRONLY|O_CREAT|O_TRUNC, mode);
   if (newfd == -1) {
     fprintf(stderr, "FAIL. unable to open %s\n", tmpname);
+    err = -1;
     goto done2;
   }
-  while ( (bytes_read = read(oldfd, buffer, sizeof(buffer))) > 0) {
-    write(newfd, buffer, bytes_read);
+  bytes_total = 0;
+#ifdef USE_SENDFILE
+  err = fstat(oldfd, &s);
+  if (!err) {
+    bytes_total = sendfile(newfd, oldfd, NULL, s.st_size);
+    if (bytes_total != s.st_size) {
+      fprintf(stderr, "FAIL. cannot copy %s to %s\n", old, new);
+      err = -1;
+    }
   }
+#else
+  while ( (bytes_read = read(oldfd, buffer, sizeof(buffer))) > 0) {
+    bytes_written = write(newfd, buffer, bytes_read);
+    if (bytes_read != bytes_written) {
+      fprintf(stderr, "FAIL. cannot copy %s to %s\n", old, new);
+      err = -1;
+      break;
+    }
+    bytes_total += bytes_written;
+  }
+#endif
   close(newfd);
   my_rename(tmpname, new);
 done2:
   free(tmpname);
   close(oldfd);
+  return err;
 }
 
 static bool my_file_exists(const char *pathname) {
