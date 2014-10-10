@@ -141,6 +141,7 @@
 #include <utime.h>
 #include <sys/time.h>
 #include <sys/statvfs.h>
+#include <sys/inotify.h>
 // For opendir():
 #include <dirent.h>
 #include <assert.h>
@@ -1546,6 +1547,9 @@ WRAP(int, chdir, chdir, (const char *path), (path), PREFER_UNDERLAY,)
 
 WRAP(ssize_t, readlink, readlink, (const char *path, char *buf, size_t bufsiz), (path, buf, bufsiz), READLINK,)
 WRAP(ssize_t, readlinkat, readlinkat, (int dirfd, const char *path, char *buf, size_t bufsiz), (dirfd, path, buf, bufsiz), READLINK|AT(dirfd),)
+
+WRAP(int, inotify_add_watch, inotify_add_watch, \
+       (int fd, const char *path, uint32_t mask), (fd, path, mask), WRITE,)
 
 WRAP(int, symlink, symlink, (const char *oldpath, const char *path), \
        (oldpath, path), EXCLUSIVE, \
