@@ -1073,7 +1073,6 @@ static char *__redir_name(const char *pathname, int use)
       } else if (S_ISDIR(underlay_mode)) {
        debug("Recreating directory, lstat_mode=%d.\n", my_file_lstat_mode(underlay_name));
        make_parents(overlay_name, underlay_name, overlay_prefix, underlay_prefix);
-       my_mkdir(overlay_name, underlay_mode & 0777);
       } else {
         // Special case!  If it doesn't exist in the overlay, and
         // it's not a normal file in the underlay,
