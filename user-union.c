@@ -575,10 +575,15 @@ static int my_file_copy(const char *old, const char *new, mode_t mode) {
     fprintf(stderr, "FAIL. unable to open %s\n", old);
     return -1;
   }
+  // TODO: POSSIBLE SECURITY ISSUE: This creates a predictable filename.
+  // If an attacker can manipulate the directory, an attacker could
+  // cause this file creation effort to fail.  We'll use O_EXCL
+  // to at least prevent an attacker from pre-creating the file and thus
+  // controlling its contents.
   tmpname = malloc(strlen(new) + strlen(suff) + 1);
   strcpy(tmpname, new);
   strcat(tmpname, suff);
-  newfd = my_open64(tmpname, O_WRONLY|O_CREAT|O_TRUNC, mode);
+  newfd = my_open64(tmpname, O_WRONLY|O_CREAT|O_EXCL|O_TRUNC, mode);
   if (newfd == -1) {
     fprintf(stderr, "FAIL. unable to open %s\n", tmpname);
     err = -1;
