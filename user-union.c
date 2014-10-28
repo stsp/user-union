@@ -583,6 +583,7 @@ static int my_file_copy(const char *old, const char *new, mode_t mode) {
   tmpname = malloc(strlen(new) + strlen(suff) + 1);
   strcpy(tmpname, new);
   strcat(tmpname, suff);
+  my_unlink(tmpname);
   newfd = my_open64(tmpname, O_WRONLY|O_CREAT|O_EXCL|O_TRUNC, mode);
   if (newfd == -1) {
     fprintf(stderr, "FAIL. unable to open %s\n", tmpname);
