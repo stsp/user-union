@@ -170,6 +170,13 @@
 #endif
 #endif
 
+enum RedirRet { REDIR, NOREDIR };
+
+struct redir_ret {
+  enum RedirRet ret;
+  char *new_name;
+};
+
 // Coding style for C used here, to make it easier to read (in my opinion):
 // - Bracing is K&R (One True Brace Style), *even* for function headings.
 // - 2-space indents.
@@ -769,8 +776,9 @@ static char *gen_whitelist_name(const char *name) {
 // The returned pointer (if not null) must be free()d by caller.
 // If it's not to be redirected, return NULL.
 
-static char *__redir_name(const char *pathname, int use)
+static struct redir_ret __redir_name(const char *pathname, int use)
 {
+  struct redir_ret ret = { .ret = REDIR, .new_name = NULL };
   char *canonicalized_pathname;
   int  len, best_match_len, best_depth_len;
   int  i, j;
@@ -805,7 +813,7 @@ static char *__redir_name(const char *pathname, int use)
   // don't bother to do lots of calculations.  We'll just use what we got.
   if (use == SKIP_UNSLASHED) {
     if (!strchr(pathname, '/'))
-      return NULL;
+      return ret;
     else
       use = READ;
   }
@@ -865,7 +873,7 @@ static char *__redir_name(const char *pathname, int use)
     // debug(" Best so far.  overlay_prefix=%s, underlay_prefix=%s\n", overlay_prefix, underlay_prefix);
   }
   if (!branch)
-    return NULL;
+    return ret;
 
   if (branch->underlay) {
       int best_match_len_undl = -1;
@@ -896,7 +904,7 @@ static char *__redir_name(const char *pathname, int use)
       // debug(" Examining non-union %s\n", branch->list->val);
       underlay_prefix = overlay_prefix;
   } else { // exclude branch
-      return NULL;
+      return ret;
   }
   debug("redir_name: For canonicalized_pathname=%s, overlay_prefix=%s, underlay_prefix=%s\n", canonicalized_pathname, overlay_prefix, underlay_prefix);
 
@@ -907,7 +915,7 @@ static char *__redir_name(const char *pathname, int use)
   if (best_match_len == -1) {
     free(canonicalized_pathname);
     debug("redir_name returning NULL undirected %s\n", pathname);
-    return NULL; // Don't redirect.
+    return ret; // Don't redirect.
   }
 
   // Whitelist handling.
@@ -960,7 +968,7 @@ static char *__redir_name(const char *pathname, int use)
     free(whitelist_name_full);
     free(overlay_name);
     free(underlay_name);
-    return NULL;
+    return ret;
   } else if (use == UNWHITELIST ) {
     if (my_file_exists(whitelist_name_full)) {
       my_unlink(whitelist_name_full);
@@ -969,7 +977,7 @@ static char *__redir_name(const char *pathname, int use)
     free(whitelist_name_full);
     free(overlay_name);
     free(underlay_name);
-    return NULL;
+    return ret;
   }
   free(whitelist_name);
   free(whitelist_name_full);
@@ -980,21 +988,25 @@ static char *__redir_name(const char *pathname, int use)
     if (overlay_name && (is_whitelisted || my_file_exists(overlay_name))) {
       free(underlay_name);
       debug("redir_name 11 returning overlay name %s\n", overlay_name);
-      return prepend_override_prefix(overlay_name);
+      ret.new_name = prepend_override_prefix(overlay_name);
+      return ret;
     } else {
       free(overlay_name);
       debug("redir_name 12 returning underlay name %s\n", underlay_name);
-      return prepend_override_prefix(underlay_name);
+      ret.new_name = prepend_override_prefix(underlay_name);
+      return ret;
     }
   } else if (use == PREFER_UNDERLAY) { // Like READ but use underlay if exists.
     if (!overlay_name || (!is_whitelisted && my_file_exists(underlay_name))) {
       free(overlay_name);
       debug("redir_name 12 returning underlay name %s\n", underlay_name);
-      return prepend_override_prefix(underlay_name);
+      ret.new_name = prepend_override_prefix(underlay_name);
+      return ret;
     } else {
       free(underlay_name);
       debug("redir_name 11 returning overlay name %s\n", overlay_name);
-      return prepend_override_prefix(overlay_name);
+      ret.new_name = prepend_override_prefix(overlay_name);
+      return ret;
     }
   } else if (use == EXCLUSIVE) { // Exclusively-create filesystem object:
     debug("O_EXCL!\n");
@@ -1003,23 +1015,27 @@ static char *__redir_name(const char *pathname, int use)
       debug("Overlay already exists!\n");
       free(underlay_name);
       debug("redir_name 21 returning underlay name %s\n", overlay_name);
-      return prepend_override_prefix(overlay_name);
+      ret.new_name = prepend_override_prefix(overlay_name);
+      return ret;
     } else if (!overlay_name) {
       free(underlay_name);
-      return prepend_override_prefix(strdup("/dev/null"));	// provoke failure
+      ret.new_name = prepend_override_prefix(strdup("/dev/null"));	// provoke failure
+      return ret;
     } else if (!is_whitelisted && my_file_exists(underlay_name)) {
       // It exists in underlay. Return the underlay name, it'll fail.
       debug("Underlay already exists!\n");
       free(overlay_name);
       debug("redir_name 22 returning underlay name %s\n", underlay_name);
-      return prepend_override_prefix(underlay_name);
+      ret.new_name = prepend_override_prefix(underlay_name);
+      return ret;
     } else {
       // Return the overlay name, because we can only create things there.
       debug("Doesn't exist in underlay or overlay (and that's good)!\n");
       make_parents(overlay_name, underlay_name, overlay_prefix, underlay_prefix);
       free(underlay_name);
       debug("redir_name 23 returning overlay name %s\n", overlay_name);
-      return prepend_override_prefix(overlay_name);
+      ret.new_name = prepend_override_prefix(overlay_name);
+      return ret;
     }
   } else if (use == OPENDIR) {
     // Create a new directory that mirrors
@@ -1050,21 +1066,25 @@ static char *__redir_name(const char *pathname, int use)
     if (my_file_exists(overlay_name)) {
       free(underlay_name);
       debug("redir_name 160 returning overlay name %s\n", overlay_name);
-      return prepend_override_prefix(overlay_name);
+      ret.new_name = prepend_override_prefix(overlay_name);
+      return ret;
     }
     if (my_file_exists(underlay_name)) {
       free(overlay_name);
       debug("redir_name 161 returning overlay name %s\n", underlay_name);
-      return prepend_override_prefix(underlay_name);
+      ret.new_name = prepend_override_prefix(underlay_name);
+      return ret;
     }
     free(overlay_name);
     free(underlay_name);
     debug("redir_name 70 returning NULL for opendir\n");
-    return NULL;
+    return ret;
   } else if (use == WRITE) { // Write (and maybe read) filesystem object
     debug("read-write!\n");
-    if (!overlay_name)
-      return prepend_override_prefix(strdup("/dev/null"));	// FIXME!
+    if (!overlay_name) {
+      ret.new_name = prepend_override_prefix(strdup("/dev/null"));	// FIXME!
+      return ret;
+    }
     if (!is_whitelisted && !my_file_exists(overlay_name) &&
         my_file_exists(underlay_name)) {
       mode_t underlay_mode = my_file_lstat_mode(underlay_name);
@@ -1091,7 +1111,8 @@ static char *__redir_name(const char *pathname, int use)
         debug("Returning underlay name.\n");
         free(overlay_name);
         debug("redir_name 15 returning underlay name %s\n", underlay_name);
-        return prepend_override_prefix(underlay_name);
+        ret.new_name = prepend_override_prefix(underlay_name);
+        return ret;
       }
     } else {
        debug("Just making parents, if necessary.\n");
@@ -1099,7 +1120,8 @@ static char *__redir_name(const char *pathname, int use)
     }
     free(underlay_name);
     debug("redir_name 16 returning overlay name %s\n", overlay_name);
-    return prepend_override_prefix(overlay_name);
+    ret.new_name = prepend_override_prefix(overlay_name);
+    return ret;
   } else if (use == EXIST ) {
     // If file exists in underlay, simply cause it to exist in the overlay.
     // This is like WRITE, but WRITE would copy a whole file in this case,
@@ -1118,7 +1140,8 @@ static char *__redir_name(const char *pathname, int use)
     }
     free(underlay_name);
     debug("redir_name 89 returning overlay name %s\n", overlay_name);
-    return prepend_override_prefix(overlay_name);
+    ret.new_name = prepend_override_prefix(overlay_name);
+    return ret;
   } else {
     fprintf(stderr, "FAIL, unknown use value %d\n", use);
     exit(1);
@@ -1150,8 +1173,10 @@ static char *redir_symlink(const char *pathname)
   return whitelist_name;
 }
 
-static char *redir_name(const char *pathname, int use)
+static struct redir_ret redir_name(const char *pathname, int use)
 {
+  struct redir_ret ret = { .ret = REDIR, .new_name = NULL };
+  struct redir_ret ret1 = ret;
   char *r_path;
   const char *f_path;
   struct stat mystats;
@@ -1161,34 +1186,35 @@ static char *redir_name(const char *pathname, int use)
   // Check if initialized already
   if (!branchlist) {
     debug("not yet initialized\n");
-    return NULL;
+    return ret;
   }
 
-  if (!pathname) return NULL; // Shouldn't happen.
+  if (!pathname) return ret; // Shouldn't happen.
 
   // If the special "override_prefix" is present, and we're using it,
   // return immediately.  This helps us guard against intercepting the
   // same pathname multiple times (in most cases it doesn't matter,
   // but this seems safer).
   if (use_override_prefix && within(pathname, override_prefix))
-    return NULL;
+    return ret;
 
   // we allow readlink() to see the original symlink.
   // all other calls see the replacement symlink.
   if (is_readlink)
     use = READ | (use & ~USAGE_T_MASK);
-  r_path = __redir_name(pathname, use);
+  ret = __redir_name(pathname, use);
+  r_path = ret.new_name;
   f_path = r_path ?: pathname;
   result = my_lstat(f_path, &mystats);
   if (result == -1)
-    return r_path;
+    return ret;
   if (S_ISLNK(mystats.st_mode)) {
     char buf[BIGBUF];
     char *r_path1;
     ssize_t n;
     n = my_readlink(f_path, buf, BIGBUF);
     if (n <= 0 || n >= BIGBUF)
-      return r_path;
+      return ret;
     buf[n] = 0;
     if (buf[0] == '/' && my_file_exists(buf)) {
       if (is_readlink) {
@@ -1199,10 +1225,10 @@ static char *redir_name(const char *pathname, int use)
          * from "pathname" */
         debug("FAIL: unsupported readlink redirection %s\n", buf);
       }
-      return r_path;
+      return ret;
     }
     if (is_readlink)
-      return r_path;
+      return ret;
     if (buf[0] != '/' && pathname[0] == '/') {
       /* handle relative symlinks */
       char *f_path1 = strdup(pathname);
@@ -1215,21 +1241,23 @@ static char *redir_name(const char *pathname, int use)
       strcpy(buf, f_path2);
       free(f_path2);
     }
-    r_path1 = __redir_name(buf, use);
+    ret1 = __redir_name(buf, use);
+    r_path1 = ret1.new_name;
     if (!r_path1)
-      return r_path;
+      return ret;
     free(r_path);
     r_path = redir_symlink(r_path1 + skip(override_prefix));
     free(r_path1);
-    r_path = prepend_override_prefix(r_path);
+    ret.new_name = prepend_override_prefix(r_path);
   }
-  return r_path;
+  return ret;
 }
 
 // Quickly calculate euidaccess as if we're root.
 // If the file exists somewhere, we'll return 0; else return -1.
 static int my_overlay_euidaccess(const char *path, int mode) {
-  char *new_path = redir_name(path, READ);
+  struct redir_ret ret = redir_name(path, READ);
+  char *new_path = ret.new_name;
   bool exists;
   unused_okay(mode);  // Remove excess -Wunused-parameter warning
   if (!new_path)
@@ -1302,20 +1330,20 @@ ALIAS(RETURNTYPE, __##NAME, PARAMETER_TYPES, NAME)
 // redirected.  The "USAGE" says if it's READ, WRITE, etc.
 #define NORMAL_WRAPPER(RETURNTYPE, NAME, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER) \
 RETURNTYPE NAME PARAMETER_TYPES {                                           \
+  struct redir_ret ret;                                                     \
   RETURNTYPE result;                                                        \
   int saved_errno;                                                          \
-  char *new_pathname;                                                       \
   const char *old_pathname = NULL;                                          \
   debug("Intercepted " #NAME "\n");                                         \
-  new_pathname = redir_name(path, USAGE);                                   \
-  if (new_pathname) {                                                       \
+  ret = redir_name(path, USAGE);                                            \
+  if (ret.new_name) {                                                       \
     old_pathname = path;                                                    \
-    path = new_pathname;                                                    \
+    path = ret.new_name;                                                    \
   }                                                                         \
   result = real_##NAME ARGUMENTS;                                           \
   saved_errno = errno;                                                      \
   AFTER ;                                                                   \
-  if (new_pathname) free(new_pathname);                                     \
+  if (ret.new_name) free(ret.new_name);                                     \
   debug("Finished wrapped version of " #NAME "\n");                         \
   errno = saved_errno;                                                      \
   unused_okay(old_pathname);                                                \
@@ -1329,28 +1357,27 @@ RETURNTYPE NAME PARAMETER_TYPES {                                           \
 #define TWO_NORMAL_WRAPPER(RETURNTYPE, NAME, PARAMETER_TYPES, ARGUMENTS,    \
                     USAGE1, USAGE2, AFTER)                                  \
 RETURNTYPE NAME PARAMETER_TYPES {                                           \
+  struct redir_ret ret1, ret2;                                              \
   RETURNTYPE result;                                                        \
   int saved_errno;                                                          \
-  char *new_pathname;                                                       \
   const char *old_pathname = NULL;                                          \
-  char *new_pathname2;                                                      \
   const char *old_pathname2 = NULL;                                         \
   debug("Intercepted " #NAME "\n");                                         \
-  new_pathname = redir_name(path, USAGE1);                                  \
-  new_pathname2 = redir_name(path2, USAGE2);                                \
-  if (new_pathname) {                                                       \
+  ret1 = redir_name(path, USAGE1);                                          \
+  ret2 = redir_name(path2, USAGE2);                                         \
+  if (ret1.new_name) {                                                      \
     old_pathname = path;                                                    \
-    path = new_pathname;                                                    \
+    path = ret1.new_name;                                                   \
   }                                                                         \
-  if (new_pathname2) {                                                      \
+  if (ret2.new_name) {                                                      \
     old_pathname2 = path2;                                                  \
-    path2 = new_pathname2;                                                  \
+    path2 = ret2.new_name;                                                  \
   }                                                                         \
   result = real_##NAME ARGUMENTS;                                           \
   saved_errno = errno;                                                      \
   AFTER ;                                                                   \
-  if (new_pathname) free(new_pathname);                                     \
-  if (new_pathname2) free(new_pathname2);                                   \
+  if (ret1.new_name) free(ret1.new_name);                                     \
+  if (ret2.new_name) free(ret2.new_name);                                   \
   debug("Finished wrapped version of " #NAME "\n");                         \
   errno = saved_errno;                                                      \
   unused_okay(old_pathname);                                                \
@@ -1366,11 +1393,11 @@ RETURNTYPE NAME PARAMETER_TYPES {                                           \
 // functions don't need to use va_start and friends).
 #define OPEN_WRAPPER(NAME, PARAMETER_TYPES, ARGUMENTS, USAGE) \
 int NAME PARAMETER_TYPES {                                                  \
+  struct redir_ret ret;                                                     \
   int result;                                                               \
   int saved_errno;                                                          \
   mode_t mode;                                                              \
   va_list ap;                                                               \
-  char *new_pathname;                                                       \
   const char *old_pathname = NULL;                                          \
                                                                             \
   if (flags & O_CREAT) {                                                    \
@@ -1381,15 +1408,15 @@ int NAME PARAMETER_TYPES {                                                  \
     mode = 0;                                                               \
   }                                                                         \
   debug("Intercepted open(\"%s\",0%o,0%o)\n", path, flags, mode);           \
-  new_pathname = redir_name(path, USAGE);                                   \
-  if (new_pathname) {                                                       \
+  ret = redir_name(path, USAGE);                                            \
+  if (ret.new_name) {                                                       \
     old_pathname = path;                                                    \
-    path = new_pathname;                                                    \
+    path = ret.new_name;                                                    \
   }                                                                         \
   result = real_##NAME ARGUMENTS ;                                          \
   saved_errno = errno;                                                      \
   unwhitelist_if_error_free(result >= 0, old_pathname);                     \
-  if (new_pathname) free(new_pathname);                                     \
+  if (ret.new_name) free(ret.new_name);                                     \
   debug("Finished wrapped version of " #NAME "\n");                         \
   errno = saved_errno;                                                      \
   unused_okay(old_pathname);                                                \
@@ -1398,10 +1425,10 @@ int NAME PARAMETER_TYPES {                                                  \
 
 #define SOCKET_WRAPPER(NAME, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER)      \
 int NAME PARAMETER_TYPES {                                                  \
+  struct redir_ret ret;                                                     \
   struct sockaddr_un new_addr;                                              \
   struct sockaddr_un *my_addr;                                              \
   struct sockaddr_un *old_addr;                                             \
-  char *new_pathname = NULL;                                                \
   char *old_pathname;                                                       \
   char *path;                                                               \
   int result;                                                               \
@@ -1414,9 +1441,9 @@ int NAME PARAMETER_TYPES {                                                  \
   path = my_addr->sun_path;                                                 \
   old_pathname = old_addr->sun_path;                                        \
   debug("Intercepted " #NAME "(\"%s\")\n", path);                           \
-  new_pathname = redir_name(path, USAGE);                                   \
-  if (new_pathname) {                                                       \
-    strncpy(new_addr.sun_path, new_pathname, sizeof(new_addr.sun_path) - 1);\
+  ret = redir_name(path, USAGE);                                            \
+  if (ret.new_name) {                                                       \
+    strncpy(new_addr.sun_path, ret.new_name, sizeof(new_addr.sun_path) - 1);\
     new_addr.sun_path[sizeof(new_addr.sun_path) - 1] = 0;                   \
     addr = (struct sockaddr *)my_addr;                                      \
     addrlen = offsetof(struct sockaddr_un, sun_path) + strlen(new_addr.sun_path) + 1; \
@@ -1426,7 +1453,7 @@ int NAME PARAMETER_TYPES {                                                  \
   saved_errno = errno;                                                      \
   if (result == -1) debug(#NAME " failed, %i %s\n", saved_errno, strerror(saved_errno)); \
   AFTER ;                                                                   \
-  if (new_pathname) free(new_pathname);                                     \
+  if (ret.new_name) free(ret.new_name);                                     \
   debug("Finished wrapped version of " #NAME "\n");                         \
   errno = saved_errno;                                                      \
   unused_okay(old_pathname);                                                \
@@ -1488,14 +1515,16 @@ ALIAS(int, __##NAME, PARAMETER_TYPES, NAME)
 // Helper functions for the wrappers
 static void whitelist_if_error_free(int result, const char *path) {
   if (result && path) {
-    char *s = redir_name(path, WHITELIST);
+    struct redir_ret ret = redir_name(path, WHITELIST);
+    char *s = ret.new_name;
     if (s) free(s);
   }
 }
 
 static void unwhitelist_if_error_free(int result, const char *path) {
   if (result && path) {
-    char *s = redir_name(path, UNWHITELIST);
+    struct redir_ret ret = redir_name(path, UNWHITELIST);
+    char *s = ret.new_name;
     if (s) free(s);
   }
 }
