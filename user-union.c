@@ -1303,6 +1303,7 @@ ALIAS(RETURNTYPE, __##NAME, PARAMETER_TYPES, NAME)
 #define NORMAL_WRAPPER(RETURNTYPE, NAME, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER) \
 RETURNTYPE NAME PARAMETER_TYPES {                                           \
   RETURNTYPE result;                                                        \
+  int saved_errno;                                                          \
   char *new_pathname;                                                       \
   const char *old_pathname = NULL;                                          \
   debug("Intercepted " #NAME "\n");                                         \
@@ -1312,9 +1313,11 @@ RETURNTYPE NAME PARAMETER_TYPES {                                           \
     path = new_pathname;                                                    \
   }                                                                         \
   result = real_##NAME ARGUMENTS;                                           \
+  saved_errno = errno;                                                      \
   AFTER ;                                                                   \
   if (new_pathname) free(new_pathname);                                     \
   debug("Finished wrapped version of " #NAME "\n");                         \
+  errno = saved_errno;                                                      \
   unused_okay(old_pathname);                                                \
   return result;                                                            \
 }
@@ -1327,6 +1330,7 @@ RETURNTYPE NAME PARAMETER_TYPES {                                           \
                     USAGE1, USAGE2, AFTER)                                  \
 RETURNTYPE NAME PARAMETER_TYPES {                                           \
   RETURNTYPE result;                                                        \
+  int saved_errno;                                                          \
   char *new_pathname;                                                       \
   const char *old_pathname = NULL;                                          \
   char *new_pathname2;                                                      \
@@ -1343,10 +1347,12 @@ RETURNTYPE NAME PARAMETER_TYPES {                                           \
     path2 = new_pathname2;                                                  \
   }                                                                         \
   result = real_##NAME ARGUMENTS;                                           \
+  saved_errno = errno;                                                      \
   AFTER ;                                                                   \
   if (new_pathname) free(new_pathname);                                     \
   if (new_pathname2) free(new_pathname2);                                   \
   debug("Finished wrapped version of " #NAME "\n");                         \
+  errno = saved_errno;                                                      \
   unused_okay(old_pathname);                                                \
   unused_okay(old_pathname2);                                               \
   return result;                                                            \
@@ -1361,6 +1367,7 @@ RETURNTYPE NAME PARAMETER_TYPES {                                           \
 #define OPEN_WRAPPER(NAME, PARAMETER_TYPES, ARGUMENTS, USAGE) \
 int NAME PARAMETER_TYPES {                                                  \
   int result;                                                               \
+  int saved_errno;                                                          \
   mode_t mode;                                                              \
   va_list ap;                                                               \
   char *new_pathname;                                                       \
@@ -1380,9 +1387,11 @@ int NAME PARAMETER_TYPES {                                                  \
     path = new_pathname;                                                    \
   }                                                                         \
   result = real_##NAME ARGUMENTS ;                                          \
+  saved_errno = errno;                                                      \
   unwhitelist_if_error_free(result >= 0, old_pathname);                     \
   if (new_pathname) free(new_pathname);                                     \
   debug("Finished wrapped version of " #NAME "\n");                         \
+  errno = saved_errno;                                                      \
   unused_okay(old_pathname);                                                \
   return result;                                                            \
 }
