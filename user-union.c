@@ -1333,15 +1333,13 @@ RETURNTYPE NAME PARAMETER_TYPES {                                           \
   struct redir_ret ret;                                                     \
   RETURNTYPE result = 0;                                                    \
   int saved_errno;                                                          \
-  const char *old_pathname = NULL;                                          \
+  const char *old_pathname = path;                                          \
   debug("Intercepted " #NAME "\n");                                         \
   ret = redir_name(path, USAGE);                                            \
   switch (ret.ret) {                                                        \
   case REDIR:                                                               \
-    if (ret.new_name) {                                                     \
-      old_pathname = path;                                                  \
+    if (ret.new_name)                                                       \
       path = ret.new_name;                                                  \
-    }                                                                       \
     result = real_##NAME ARGUMENTS;                                         \
     break;                                                                  \
   case NOREDIR:                                                             \
@@ -1372,20 +1370,16 @@ RETURNTYPE NAME PARAMETER_TYPES {                                           \
   struct redir_ret ret1, ret2;                                              \
   RETURNTYPE result;                                                        \
   int saved_errno;                                                          \
-  const char *old_pathname = NULL;                                          \
-  const char *old_pathname2 = NULL;                                         \
+  const char *old_pathname = path;                                          \
+  const char *old_pathname2 = path2;                                        \
   debug("Intercepted " #NAME "\n");                                         \
   ret1 = redir_name(path, USAGE1);                                          \
   ret2 = redir_name(path2, USAGE2);                                         \
   assert(ret1.ret == REDIR && ret2.ret == REDIR);                           \
-  if (ret1.new_name) {                                                      \
-    old_pathname = path;                                                    \
+  if (ret1.new_name)                                                        \
     path = ret1.new_name;                                                   \
-  }                                                                         \
-  if (ret2.new_name) {                                                      \
-    old_pathname2 = path2;                                                  \
+  if (ret2.new_name)                                                        \
     path2 = ret2.new_name;                                                  \
-  }                                                                         \
   result = real_##NAME ARGUMENTS;                                           \
   saved_errno = errno;                                                      \
   AFTER ;                                                                   \
@@ -1403,15 +1397,13 @@ RETURNTYPE NAME PARAMETER_TYPES {                                           \
   struct redir_ret ret;                                                     \
   RETURNTYPE result = NULL;                                                 \
   int saved_errno;                                                          \
-  const char *old_pathname = NULL;                                          \
+  const char *old_pathname = path;                                          \
   debug("Intercepted " #NAME "\n");                                         \
   ret = redir_name(path, USAGE);                                            \
   switch (ret.ret) {                                                        \
   case REDIR:                                                               \
-    if (ret.new_name) {                                                     \
-      old_pathname = path;                                                  \
+    if (ret.new_name)                                                       \
       path = ret.new_name;                                                  \
-    }                                                                       \
     result = real_##NAME ARGUMENTS;                                         \
     break;                                                                  \
   case NOREDIR:                                                             \
@@ -1443,7 +1435,7 @@ int NAME PARAMETER_TYPES {                                                  \
   int saved_errno;                                                          \
   mode_t mode;                                                              \
   va_list ap;                                                               \
-  const char *old_pathname = NULL;                                          \
+  const char *old_pathname = path;                                          \
                                                                             \
   if (flags & O_CREAT) {                                                    \
     va_start(ap, flags);                                                    \
@@ -1455,10 +1447,8 @@ int NAME PARAMETER_TYPES {                                                  \
   debug("Intercepted open(\"%s\",0%o,0%o)\n", path, flags, mode);           \
   ret = redir_name(path, USAGE);                                            \
   assert(ret.ret == REDIR);                                                 \
-  if (ret.new_name) {                                                       \
-    old_pathname = path;                                                    \
+  if (ret.new_name)                                                         \
     path = ret.new_name;                                                    \
-  }                                                                         \
   result = real_##NAME ARGUMENTS ;                                          \
   saved_errno = errno;                                                      \
   unwhitelist_if_error_free(result >= 0, old_pathname);                     \
