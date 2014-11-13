@@ -170,7 +170,7 @@
 #endif
 #endif
 
-enum RedirRet { REDIR, NOREDIR };
+enum RedirRet { REDIR, NOREDIR, FAILREDIR };
 
 struct redir_ret {
   enum RedirRet ret;
@@ -1019,7 +1019,7 @@ static struct redir_ret __redir_name(const char *pathname, int use)
       return ret;
     } else if (!overlay_name) {
       free(underlay_name);
-      ret.new_name = prepend_override_prefix(strdup("/dev/null"));	// provoke failure
+      ret.ret = FAILREDIR;
       return ret;
     } else if (!is_whitelisted && my_file_exists(underlay_name)) {
       // It exists in underlay. Return the underlay name, it'll fail.
@@ -1082,7 +1082,7 @@ static struct redir_ret __redir_name(const char *pathname, int use)
   } else if (use == WRITE) { // Write (and maybe read) filesystem object
     debug("read-write!\n");
     if (!overlay_name) {
-      ret.new_name = prepend_override_prefix(strdup("/dev/null"));	// FIXME!
+      ret.ret = FAILREDIR;
       return ret;
     }
     if (!is_whitelisted && !my_file_exists(overlay_name) &&
@@ -1331,16 +1331,28 @@ ALIAS(RETURNTYPE, __##NAME, PARAMETER_TYPES, NAME)
 #define NORMAL_WRAPPER(RETURNTYPE, NAME, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER) \
 RETURNTYPE NAME PARAMETER_TYPES {                                           \
   struct redir_ret ret;                                                     \
-  RETURNTYPE result;                                                        \
+  RETURNTYPE result = 0;                                                    \
   int saved_errno;                                                          \
   const char *old_pathname = NULL;                                          \
   debug("Intercepted " #NAME "\n");                                         \
   ret = redir_name(path, USAGE);                                            \
-  if (ret.new_name) {                                                       \
-    old_pathname = path;                                                    \
-    path = ret.new_name;                                                    \
+  switch (ret.ret) {                                                        \
+  case REDIR:                                                               \
+    if (ret.new_name) {                                                     \
+      old_pathname = path;                                                  \
+      path = ret.new_name;                                                  \
+    }                                                                       \
+    result = real_##NAME ARGUMENTS;                                         \
+    break;                                                                  \
+  case NOREDIR:                                                             \
+    assert(!ret.new_name);                                                  \
+    result = 0;                                                             \
+    break;                                                                  \
+  case FAILREDIR:                                                           \
+    assert(!ret.new_name);                                                  \
+    result = -1;                                                            \
+    break;                                                                  \
   }                                                                         \
-  result = real_##NAME ARGUMENTS;                                           \
   saved_errno = errno;                                                      \
   AFTER ;                                                                   \
   if (ret.new_name) free(ret.new_name);                                     \
@@ -1365,6 +1377,7 @@ RETURNTYPE NAME PARAMETER_TYPES {                                           \
   debug("Intercepted " #NAME "\n");                                         \
   ret1 = redir_name(path, USAGE1);                                          \
   ret2 = redir_name(path2, USAGE2);                                         \
+  assert(ret1.ret == REDIR && ret2.ret == REDIR);                           \
   if (ret1.new_name) {                                                      \
     old_pathname = path;                                                    \
     path = ret1.new_name;                                                   \
@@ -1376,7 +1389,7 @@ RETURNTYPE NAME PARAMETER_TYPES {                                           \
   result = real_##NAME ARGUMENTS;                                           \
   saved_errno = errno;                                                      \
   AFTER ;                                                                   \
-  if (ret1.new_name) free(ret1.new_name);                                     \
+  if (ret1.new_name) free(ret1.new_name);                                   \
   if (ret2.new_name) free(ret2.new_name);                                   \
   debug("Finished wrapped version of " #NAME "\n");                         \
   errno = saved_errno;                                                      \
@@ -1385,6 +1398,38 @@ RETURNTYPE NAME PARAMETER_TYPES {                                           \
   return result;                                                            \
 }
 
+#define PTR_WRAPPER(RETURNTYPE, NAME, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER) \
+RETURNTYPE NAME PARAMETER_TYPES {                                           \
+  struct redir_ret ret;                                                     \
+  RETURNTYPE result = NULL;                                                 \
+  int saved_errno;                                                          \
+  const char *old_pathname = NULL;                                          \
+  debug("Intercepted " #NAME "\n");                                         \
+  ret = redir_name(path, USAGE);                                            \
+  switch (ret.ret) {                                                        \
+  case REDIR:                                                               \
+    if (ret.new_name) {                                                     \
+      old_pathname = path;                                                  \
+      path = ret.new_name;                                                  \
+    }                                                                       \
+    result = real_##NAME ARGUMENTS;                                         \
+    break;                                                                  \
+  case NOREDIR:                                                             \
+    abort();                                                                \
+    break;                                                                  \
+  case FAILREDIR:                                                           \
+    assert(!ret.new_name);                                                  \
+    result = NULL;                                                          \
+    break;                                                                  \
+  }                                                                         \
+  saved_errno = errno;                                                      \
+  AFTER ;                                                                   \
+  if (ret.new_name) free(ret.new_name);                                     \
+  debug("Finished wrapped version of " #NAME "\n");                         \
+  errno = saved_errno;                                                      \
+  unused_okay(old_pathname);                                                \
+  return result;                                                            \
+}
 
 // Wrap "open".  This is special; open takes either 2 *OR* 3 parameters;
 // so declaring external functions with 3 arguments will
@@ -1409,6 +1454,7 @@ int NAME PARAMETER_TYPES {                                                  \
   }                                                                         \
   debug("Intercepted open(\"%s\",0%o,0%o)\n", path, flags, mode);           \
   ret = redir_name(path, USAGE);                                            \
+  assert(ret.ret == REDIR);                                                 \
   if (ret.new_name) {                                                       \
     old_pathname = path;                                                    \
     path = ret.new_name;                                                    \
@@ -1442,6 +1488,7 @@ int NAME PARAMETER_TYPES {                                                  \
   old_pathname = old_addr->sun_path;                                        \
   debug("Intercepted " #NAME "(\"%s\")\n", path);                           \
   ret = redir_name(path, USAGE);                                            \
+  assert(ret.ret == REDIR);                                                 \
   if (ret.new_name) {                                                       \
     strncpy(new_addr.sun_path, ret.new_name, sizeof(new_addr.sun_path) - 1);\
     new_addr.sun_path[sizeof(new_addr.sun_path) - 1] = 0;                   \
@@ -1472,6 +1519,10 @@ NORMAL_WRAPPER(RETURNTYPE, NAME, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER)
 CHAIN(RETURNTYPE, NAME, PARAMETER_TYPES, ARGUMENTS, SYMBOL) \
 TWO_NORMAL_WRAPPER(RETURNTYPE, NAME, PARAMETER_TYPES, ARGUMENTS, USAGE1, USAGE2, AFTER)
 
+#define PTR_WRAP(RETURNTYPE, NAME, SYMBOL, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER) \
+CHAIN(RETURNTYPE, NAME, PARAMETER_TYPES, ARGUMENTS, SYMBOL) \
+PTR_WRAPPER(RETURNTYPE, NAME, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER)
+
 // Normal wrap - wrap up NAME, _NAME, and __NAME.
 #define WRAP(RETURNTYPE, NAME, SYMBOL, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER) \
 BASIC_WRAP(RETURNTYPE, NAME, SYMBOL, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER) \
@@ -1484,10 +1535,19 @@ TWO_BASIC_WRAP(RETURNTYPE, NAME, SYMBOL, PARAMETER_TYPES, ARGUMENTS, USAGE1, USA
 ALIAS(RETURNTYPE, _##NAME, PARAMETER_TYPES, NAME) \
 ALIAS(RETURNTYPE, __##NAME, PARAMETER_TYPES, NAME)
 
+#define PWRAP(RETURNTYPE, NAME, SYMBOL, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER) \
+PTR_WRAP(RETURNTYPE, NAME, SYMBOL, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER) \
+ALIAS(RETURNTYPE, _##NAME, PARAMETER_TYPES, NAME) \
+ALIAS(RETURNTYPE, __##NAME, PARAMETER_TYPES, NAME)
+
 // Wrap 64-bit version; like WRAP, but also do it for NAME ## 64.
 #define WRAP64(RETURNTYPE, NAME, SYMBOL, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER) \
 WRAP(RETURNTYPE, NAME, SYMBOL, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER) \
 WRAP(RETURNTYPE, NAME##64, SYMBOL##64, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER)
+
+#define PWRAP64(RETURNTYPE, NAME, SYMBOL, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER) \
+PWRAP(RETURNTYPE, NAME, SYMBOL, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER) \
+PWRAP(RETURNTYPE, NAME##64, SYMBOL##64, PARAMETER_TYPES, ARGUMENTS, USAGE, AFTER)
 
 // Like BASIC_WRAP, but for open() which takes a varying # of parameters.
 #define BASIC_OPEN_WRAP(NAME, PARAMETER_TYPES, PARAMETER_TYPES_ALL, ARGUMENTS, USAGE) \
@@ -1638,7 +1698,7 @@ WRAP(int, utimes, utimes, (const char *path, const struct timeval times[2]),
 WRAP(int, chmod, chmod, (const char* path, mode_t mode), \
      (path, mode), WRITE,)
 
-WRAP(DIR *, opendir, opendir, (const char* path), (path), OPENDIR,)
+PWRAP(DIR *, opendir, opendir, (const char* path), (path), OPENDIR,)
 // It's not clear how to handle fdopendir().
 
 // TODO: Should we handle chown, lchown, fchown differently?
@@ -1819,10 +1879,10 @@ WRAP(int, lstat64, lstat64, (const char* path, struct stat64* sb), (path, sb), R
 // not normally let us override the open() inside fopen, so we must
 // do it ourselves.
 
-WRAP64(FILE *, fopen,   fopen,   (const char *path, const char *mode), \
+PWRAP64(FILE *, fopen,   fopen,   (const char *path, const char *mode), \
                     (path, mode), use_fopen(mode), unwhitelist_if_error_free(result!=NULL, old_pathname))
 
-WRAP64(FILE *, freopen, freopen, \
+PWRAP64(FILE *, freopen, freopen, \
        (const char *path, const char *mode, FILE *stream), \
                      (path, mode, stream), use_fopen(mode),unwhitelist_if_error_free(result!=NULL, old_pathname))
 
@@ -1836,7 +1896,7 @@ WRAP64(int, creat, creat, \
 // special modes for each type of use (dl*, exec*) and do the path-like
 // searching specially.
 
-WRAP(void *, dlopen, dlopen, (const char *path, int flag), (path, flag), \
+PWRAP(void *, dlopen, dlopen, (const char *path, int flag), (path, flag), \
   SKIP_UNSLASHED,)
 
 /* Under uClibc it is unsafe to wrap these functions.
