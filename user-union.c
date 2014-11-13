@@ -1063,7 +1063,7 @@ static struct redir_ret __redir_name(const char *pathname, int use)
     // while ((dp = readdir (dir)) != NULL) {
     // }
     /* HACK, for now */
-    if (my_file_exists(overlay_name)) {
+    if (overlay_name && my_file_exists(overlay_name)) {
       free(underlay_name);
       debug("redir_name 160 returning overlay name %s\n", overlay_name);
       ret.new_name = prepend_override_prefix(overlay_name);
@@ -1123,20 +1123,21 @@ static struct redir_ret __redir_name(const char *pathname, int use)
     ret.new_name = prepend_override_prefix(overlay_name);
     return ret;
   } else if (use == EXIST ) {
-    // If file exists in underlay, simply cause it to exist in the overlay.
-    // This is like WRITE, but WRITE would copy a whole file in this case,
-    // which is pointless if we're about to delete it.
-    // Then return overlay name.
     debug("EXIST!\n");
-    if (!is_whitelisted && !my_file_exists(overlay_name) &&
-        my_file_exists(underlay_name)) {
-      int result;
-      make_parents(overlay_name, underlay_name, overlay_prefix, underlay_prefix);
-      // FIXME: Mode (and owner) should match original file.
-      result = my_open64(overlay_name, O_RDWR | O_CREAT, 0777);
-      // Technically close() can return an error code, but there's nothing
-      // we can practically do about close errors so we'll ignore them.
-      if (result >= 0) close(result);
+    if (is_whitelisted) {
+      free(underlay_name);
+      free(overlay_name);
+      ret.ret = FAILREDIR;
+      return ret;
+    }
+    if (!overlay_name || !my_file_exists(overlay_name)) {
+      /* if file doesnt exist in overlay and underlay, return failure.
+       * If it is only in underlay - return success and whitelist it. */
+      ret.ret = my_file_exists(underlay_name) ? NOREDIR : FAILREDIR;
+      debug("redir_name 88 skipping EXIST redirect, %i\n", ret.ret);
+      free(underlay_name);
+      free(overlay_name);
+      return ret;
     }
     free(underlay_name);
     debug("redir_name 89 returning overlay name %s\n", overlay_name);
