@@ -1619,9 +1619,9 @@ WRAP(int, mkdirat, mkdirat, (int dirfd, const char *path, mode_t mode), \
                  unwhitelist_if_error_free(result>=0, old_pathname))
 
 WRAP(int, rmdir, rmdir, (const char *path), \
-                 (path), WRITE, whitelist_if_error_free(result>=0, old_pathname))
+                 (path), EXIST, whitelist_if_error_free(result>=0, old_pathname))
 WRAP(int, remove, remove, (const char *path), \
-                 (path), WRITE, whitelist_if_error_free(result>=0, old_pathname))
+                 (path), EXIST, whitelist_if_error_free(result>=0, old_pathname))
 
 // Pretend that we have an effective UID of root.
 // That way, tools that first check to see if we have permission to do
