@@ -175,6 +175,7 @@ enum RedirRet { REDIR, NOREDIR, FAILREDIR };
 struct redir_ret {
   enum RedirRet ret;
   char *new_name;
+  int err;
 };
 
 // Coding style for C used here, to make it easier to read (in my opinion):
@@ -1020,6 +1021,7 @@ static struct redir_ret __redir_name(const char *pathname, int use)
     } else if (!overlay_name) {
       free(underlay_name);
       ret.ret = FAILREDIR;
+      ret.err = EACCES;
       return ret;
     } else if (!is_whitelisted && my_file_exists(underlay_name)) {
       // It exists in underlay. Return the underlay name, it'll fail.
@@ -1083,6 +1085,7 @@ static struct redir_ret __redir_name(const char *pathname, int use)
     debug("read-write!\n");
     if (!overlay_name) {
       ret.ret = FAILREDIR;
+      ret.err = EACCES;
       return ret;
     }
     if (!is_whitelisted && !my_file_exists(overlay_name) &&
@@ -1128,12 +1131,18 @@ static struct redir_ret __redir_name(const char *pathname, int use)
       free(underlay_name);
       free(overlay_name);
       ret.ret = FAILREDIR;
+      ret.err = ENOENT;
       return ret;
     }
     if (!overlay_name || !my_file_exists(overlay_name)) {
       /* if file doesnt exist in overlay and underlay, return failure.
        * If it is only in underlay - return success and whitelist it. */
-      ret.ret = my_file_exists(underlay_name) ? NOREDIR : FAILREDIR;
+      if (my_file_exists(underlay_name)) {
+        ret.ret = NOREDIR;
+      } else {
+        ret.ret = FAILREDIR;
+        ret.err = ENOENT;
+      }
       debug("redir_name 88 skipping EXIST redirect, %i\n", ret.ret);
       free(underlay_name);
       free(overlay_name);
@@ -1333,7 +1342,7 @@ ALIAS(RETURNTYPE, __##NAME, PARAMETER_TYPES, NAME)
 RETURNTYPE NAME PARAMETER_TYPES {                                           \
   struct redir_ret ret;                                                     \
   RETURNTYPE result = 0;                                                    \
-  int saved_errno;                                                          \
+  int saved_errno = 0;                                                      \
   const char *old_pathname = path;                                          \
   debug("Intercepted " #NAME "\n");                                         \
   ret = redir_name(path, USAGE);                                            \
@@ -1342,17 +1351,18 @@ RETURNTYPE NAME PARAMETER_TYPES {                                           \
     if (ret.new_name)                                                       \
       path = ret.new_name;                                                  \
     result = real_##NAME ARGUMENTS;                                         \
+    saved_errno = errno;                                                    \
     break;                                                                  \
   case NOREDIR:                                                             \
     assert(!ret.new_name);                                                  \
     result = 0;                                                             \
     break;                                                                  \
   case FAILREDIR:                                                           \
-    assert(!ret.new_name);                                                  \
+    assert(!ret.new_name && ret.err);                                       \
     result = -1;                                                            \
+    saved_errno = ret.err;                                                  \
     break;                                                                  \
   }                                                                         \
-  saved_errno = errno;                                                      \
   AFTER ;                                                                   \
   if (ret.new_name) free(ret.new_name);                                     \
   debug("Finished wrapped version of " #NAME "\n");                         \
@@ -1397,7 +1407,7 @@ RETURNTYPE NAME PARAMETER_TYPES {                                           \
 RETURNTYPE NAME PARAMETER_TYPES {                                           \
   struct redir_ret ret;                                                     \
   RETURNTYPE result = NULL;                                                 \
-  int saved_errno;                                                          \
+  int saved_errno = 0;                                                      \
   const char *old_pathname = path;                                          \
   debug("Intercepted " #NAME "\n");                                         \
   ret = redir_name(path, USAGE);                                            \
@@ -1406,16 +1416,17 @@ RETURNTYPE NAME PARAMETER_TYPES {                                           \
     if (ret.new_name)                                                       \
       path = ret.new_name;                                                  \
     result = real_##NAME ARGUMENTS;                                         \
+    saved_errno = errno;                                                    \
     break;                                                                  \
   case NOREDIR:                                                             \
     abort();                                                                \
     break;                                                                  \
   case FAILREDIR:                                                           \
-    assert(!ret.new_name);                                                  \
+    assert(!ret.new_name && ret.err);                                       \
     result = NULL;                                                          \
+    saved_errno = ret.err;                                                  \
     break;                                                                  \
   }                                                                         \
-  saved_errno = errno;                                                      \
   AFTER ;                                                                   \
   if (ret.new_name) free(ret.new_name);                                     \
   debug("Finished wrapped version of " #NAME "\n");                         \
