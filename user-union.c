@@ -873,8 +873,14 @@ static struct redir_ret __redir_name(const char *pathname, int use)
     branch = br;
     // debug(" Best so far.  overlay_prefix=%s, underlay_prefix=%s\n", overlay_prefix, underlay_prefix);
   }
-  if (!branch)
-    return ret;
+  // TODO: Don't allocate canonicalized_pathname if we don't have to;
+  // then, free it only if it got allocated.
+  // That way we can speed absolute filenames that aren't redirected.
+  if (!branch) {
+    free(canonicalized_pathname);
+    debug("redir_name returning NULL undirected %s\n", pathname);
+    return ret; // Don't redirect.
+  }
 
   if (branch->underlay) {
       int best_match_len_undl = -1;
@@ -908,16 +914,6 @@ static struct redir_ret __redir_name(const char *pathname, int use)
       return ret;
   }
   debug("redir_name: For canonicalized_pathname=%s, overlay_prefix=%s, underlay_prefix=%s\n", canonicalized_pathname, overlay_prefix, underlay_prefix);
-
-  // TODO: Don't allocate canonicalized_pathname if we don't have to;
-  // then, free it only if it got allocated.
-  // That way we can speed absolute filenames that aren't redirected.
-
-  if (best_match_len == -1) {
-    free(canonicalized_pathname);
-    debug("redir_name returning NULL undirected %s\n", pathname);
-    return ret; // Don't redirect.
-  }
 
   // Whitelist handling.
   whitelist_name = gen_whitelist_name(
