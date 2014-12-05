@@ -772,6 +772,33 @@ static char *gen_whitelist_name(const char *name) {
   return final;
 }
 
+static struct branch *lookup_branch(const char *pathname)
+{
+  int len, best_match_len, best_depth_len, i;
+  struct branch *branch = NULL;
+  best_match_len = -1;
+  best_depth_len = -1;
+  // debug("Looking for best match to %s\n", pathname);
+  for (i = 0; i < num_branches; i++) {
+    struct branch *br = &branchlist[i];
+    int depth_cmp = (br->match_depth != -1 || best_depth_len != -1);
+    debug("Comparing with branch %s\n", br->mount_point);
+    if (!within_max(pathname, br->mount_point, br->match_depth))
+      continue;
+    len = strlen(br->mount_point);
+    debug(" len=%d, best_match_len=%d best_depth_len=%d\n",
+        len, best_match_len, best_depth_len);
+    if ((depth_cmp && best_depth_len != -1 && br->match_depth >= best_depth_len) ||
+        (!depth_cmp && len <= best_match_len))
+      continue;
+    // This is better than any previous match, accept it.
+    best_match_len = len;
+    best_depth_len = br->match_depth;
+    branch = br;
+    // debug(" Best so far.  overlay_prefix=%s, underlay_prefix=%s\n", overlay_prefix, underlay_prefix);
+  }
+  return branch;
+}
 
 // Take pathname and return a pointer to a redirected pathname.
 // The returned pointer (if not null) must be free()d by caller.
@@ -780,9 +807,8 @@ static char *gen_whitelist_name(const char *name) {
 static struct redir_ret __redir_name(const char *pathname, int use)
 {
   struct redir_ret ret = { .ret = REDIR, .new_name = NULL };
+  int i, j;
   char *canonicalized_pathname;
-  int  len, best_match_len, best_depth_len;
-  int  i, j;
   int exist_creat;
   char *overlay_prefix, *underlay_prefix, *mount_point;
   char *overlay_name;   // Will be allocated.
@@ -848,31 +874,7 @@ static struct redir_ret __redir_name(const char *pathname, int use)
   // Now examine branch information to find best match.
   // Track best match using best_match_len (longest one wins),
   // setting overlay_prefix as needed.
-  overlay_prefix = underlay_prefix = mount_point = NULL;
-  best_match_len = -1;
-  best_depth_len = -1;
-  branch = NULL;
-  // debug("Looking for best match to %s\n", canonicalized_pathname);
-  for (i = 0; i < num_branches; i++) {
-    struct branch *br = &branchlist[i];
-    int depth_cmp = (br->match_depth != -1 || best_depth_len != -1);
-    debug("Comparing with branch %s\n", br->mount_point);
-    if (!within_max(canonicalized_pathname, br->mount_point, br->match_depth))
-      continue;
-    len = strlen(br->mount_point);
-    debug(" len=%d, best_match_len=%d best_depth_len=%d\n",
-        len, best_match_len, best_depth_len);
-    if ((depth_cmp && best_depth_len != -1 && br->match_depth >= best_depth_len) ||
-        (!depth_cmp && len <= best_match_len))
-      continue;
-    // This is better than any previous match, accept it.
-    overlay_prefix = br->overlay;
-    mount_point = br->mount_point;
-    best_match_len = len;
-    best_depth_len = br->match_depth;
-    branch = br;
-    // debug(" Best so far.  overlay_prefix=%s, underlay_prefix=%s\n", overlay_prefix, underlay_prefix);
-  }
+  branch = lookup_branch(canonicalized_pathname);
   // TODO: Don't allocate canonicalized_pathname if we don't have to;
   // then, free it only if it got allocated.
   // That way we can speed absolute filenames that aren't redirected.
@@ -881,6 +883,9 @@ static struct redir_ret __redir_name(const char *pathname, int use)
     debug("redir_name returning NULL undirected %s\n", pathname);
     return ret; // Don't redirect.
   }
+  overlay_prefix = branch->overlay;
+  underlay_prefix = NULL;
+  mount_point = branch->mount_point;
 
   if (branch->underlay) {
       int best_match_len_undl = -1;
