@@ -772,7 +772,9 @@ static char *gen_whitelist_name(const char *name) {
   return final;
 }
 
-static struct branch *lookup_branch(const char *pathname)
+enum lo_type { LO_MP, LO_OVR, /* implement LO_UNDL */ };
+
+static struct branch *lookup_branch(const char *pathname, enum lo_type lt)
 {
   int len, best_match_len, best_depth_len, i;
   struct branch *branch = NULL;
@@ -781,11 +783,22 @@ static struct branch *lookup_branch(const char *pathname)
   // debug("Looking for best match to %s\n", pathname);
   for (i = 0; i < num_branches; i++) {
     struct branch *br = &branchlist[i];
+    const char *needle = NULL;
     int depth_cmp = (br->match_depth != -1 || best_depth_len != -1);
-    debug("Comparing with branch %s\n", br->mount_point);
-    if (!within_max(pathname, br->mount_point, br->match_depth))
+    switch (lt) {
+      case LO_MP:
+        needle = br->mount_point;
+        break;
+      case LO_OVR:
+        needle = br->overlay;
+        break;
+    }
+    if (!needle)
       continue;
-    len = strlen(br->mount_point);
+    debug("Comparing with branch %s\n", needle);
+    if (!within_max(pathname, needle, br->match_depth))
+      continue;
+    len = strlen(needle);
     debug(" len=%d, best_match_len=%d best_depth_len=%d\n",
         len, best_match_len, best_depth_len);
     if ((depth_cmp && best_depth_len != -1 && br->match_depth >= best_depth_len) ||
@@ -857,8 +870,19 @@ static struct redir_ret __redir_name(const char *pathname, int use)
   } else {
     char current_directory[BIGBUF];
     int len;
+    struct branch *br;
     // FIXME - if error or overflow!:
     getcwd(current_directory, sizeof(current_directory));
+    /* now we need to find a mount point of cwd, if it is in overlay */
+    br = lookup_branch(current_directory, LO_OVR);
+    if (br && strcmp(br->mount_point, br->overlay)) {
+      char current_directory2[BIGBUF];
+      strcpy(current_directory2, br->mount_point);
+      strcat(current_directory2, current_directory + strlen(br->overlay));
+      debug("replacing cwd %s: %s --> %s = %s\n", current_directory,
+          br->overlay, br->mount_point, current_directory2);
+      strcpy(current_directory, current_directory2);
+    }
     len = strlen(current_directory);
     if (len > 1)
       strcat(current_directory, "/");
@@ -874,7 +898,7 @@ static struct redir_ret __redir_name(const char *pathname, int use)
   // Now examine branch information to find best match.
   // Track best match using best_match_len (longest one wins),
   // setting overlay_prefix as needed.
-  branch = lookup_branch(canonicalized_pathname);
+  branch = lookup_branch(canonicalized_pathname, LO_MP);
   // TODO: Don't allocate canonicalized_pathname if we don't have to;
   // then, free it only if it got allocated.
   // That way we can speed absolute filenames that aren't redirected.
