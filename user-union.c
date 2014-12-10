@@ -1193,15 +1193,18 @@ static char *redir_symlink(const char *pathname)
   if (n > 0 && n < BIGBUF) {
     buf[n] = 0;
     /* symlink exists */
+    debug("symlink %s points to %s\n", whitelist_name, buf);
     if (strcmp(pathname, buf) == 0)
       return whitelist_name;
+    debug("expected symlink to %s\n", pathname);
   }
   /* remove old symlink, if exists */
   my_unlink(whitelist_name);
   make_parents_of(whitelist_name);
   rc = my_symlink(pathname, whitelist_name);
   if (rc == -1) {
-    fprintf(stderr, "FAIL: symlink creation failed at %s\n", whitelist_name);
+    fprintf(stderr, "FAIL: symlink creation failed %s --> %s: %s\n",
+      pathname, whitelist_name, strerror(errno));
     free(whitelist_name);
     return NULL;
   }
@@ -1283,7 +1286,10 @@ static struct redir_ret redir_name(const char *pathname, int use)
     free(r_path);
     r_path = redir_symlink(r_path1 + skip(override_prefix));
     free(r_path1);
-    ret.new_name = prepend_override_prefix(r_path);
+    if (!r_path)
+      ret.new_name = NULL;
+    else
+      ret.new_name = prepend_override_prefix(r_path);
   }
   return ret;
 }
