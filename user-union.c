@@ -668,6 +668,21 @@ static int my_file_copy(const char *old, const char *new, mode_t mode) {
     bytes_total += bytes_written;
   }
 #endif
+#if 1
+  /* unfortunately, with many filesystems fsync() is needed before close():
+   * http://www.linux-mtd.infradead.org/faq/ubifs.html#L_atomic_change
+   * http://www.linux-mtd.infradead.org/doc/ubifs.html#L_sync_exceptions
+   *
+   * I really hope that one day we'll have the more robust interfaces,
+   * maybe like this:
+   * http://thread.gmane.org/gmane.linux.kernel/813224
+   * or this:
+   * http://lwn.net/Articles/323248/
+   *
+   * For now fsync() looks unavoidable.
+   */
+  fsync(newfd);
+#endif
   close(newfd);
   my_rename(tmpname, new);
 done2:
