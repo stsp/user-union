@@ -231,9 +231,7 @@ static void __attribute__((destructor)) finalize(void)
  * glibc does. Unfortunately, these wrappers do not work on uClibc
  * yet, so for uClibc we also disable the exec* wrappers. */
 
-#define __C_WRP(RTYPE, SYM, DEF_ARGS, ORIG_CODE, NEW_CODE) \
-static RTYPE wrp_##SYM DEF_ARGS \
-{ \
+#define __C_WRP_COMMON(RTYPE, SYM, DEF_ARGS) \
   static RTYPE (*orig_##SYM) DEF_ARGS; \
   static RTYPE (*new_##SYM) DEF_ARGS; \
   if (!orig_##SYM) \
@@ -243,24 +241,45 @@ static RTYPE wrp_##SYM DEF_ARGS \
     _exit(1); \
   } \
   if (dl_handle && !new_##SYM) \
-    new_##SYM = dlsym(dl_handle, __STRING(SYM)); \
+    new_##SYM = dlsym(dl_handle, __STRING(SYM))
+#define __C_WRP(RTYPE, SYM, DEF_ARGS, ORIG_CODE, NEW_CODE) \
+static RTYPE wrp_##SYM DEF_ARGS \
+{ \
+  __C_WRP_COMMON(RTYPE, SYM, DEF_ARGS); \
   if (!new_##SYM || !dl_handle) \
+    return ORIG_CODE; \
+  return NEW_CODE; \
+}
+#define __C_WRP_VOID(SYM, DEF_ARGS, ORIG_CODE, NEW_CODE) \
+static void wrp_##SYM DEF_ARGS \
+{ \
+  __C_WRP_COMMON(void, SYM, DEF_ARGS); \
+  if (!new_##SYM || !dl_handle) { \
     ORIG_CODE; \
+    return; \
+  } \
   NEW_CODE; \
 }
 
 #define C_WRP(RTYPE, SYM, DEF_ARGS, CALL_ARGS) \
-__C_WRP(RTYPE, SYM, DEF_ARGS, return orig_##SYM CALL_ARGS, \
-    return new_##SYM CALL_ARGS) \
+__C_WRP(RTYPE, SYM, DEF_ARGS, orig_##SYM CALL_ARGS, \
+    new_##SYM CALL_ARGS) \
 inline __attribute__((visibility("hidden"))) RTYPE SYM DEF_ARGS \
 { \
   return wrp_##SYM CALL_ARGS; \
+}
+#define C_WRP_VOID(SYM, DEF_ARGS, CALL_ARGS) \
+__C_WRP_VOID(SYM, DEF_ARGS, orig_##SYM CALL_ARGS, \
+    new_##SYM CALL_ARGS) \
+inline __attribute__((visibility("hidden"))) void SYM DEF_ARGS \
+{ \
+  wrp_##SYM CALL_ARGS; \
 }
 
 /* malloc() and free() are protected with mutex. They are first-class
  * offenders. */
 C_WRP(void *, malloc, (size_t size), (size))
-C_WRP(void, free, (void *ptr), (ptr))
+C_WRP_VOID(free, (void *ptr), (ptr))
 /* strdup() uses malloc() */
 #undef strdup
 C_WRP(char *, strdup, (const char *s), (s))
@@ -298,7 +317,7 @@ C_WRP(size_t, fwrite, (const void *ptr, size_t size, size_t nmemb,
 static FILE **my_stderr;
 static int (*orig_fprintf)(FILE *stream, const char *format, ...);
 __C_WRP(int, vfprintf, (FILE *stream, const char *format, va_list ap),
-    return orig_vfprintf(stream, format, ap), do {
+    orig_vfprintf(stream, format, ap), ({
   if (stream != stderr) {
     orig_fprintf(stderr, "FAIL, unsupported fprintf, please report bug\n");
     exit(1);
@@ -309,8 +328,8 @@ __C_WRP(int, vfprintf, (FILE *stream, const char *format, va_list ap),
     orig_fprintf(stderr, "FAIL, stderr does not resolve\n");
     exit(1);
   }
-  return new_vfprintf(*my_stderr, format, ap);
-} while (0))
+  new_vfprintf(*my_stderr, format, ap);
+}))
 
 inline __attribute__((visibility("hidden")))
 	int fprintf(FILE *stream, const char *format, ...)
