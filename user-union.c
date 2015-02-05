@@ -887,11 +887,11 @@ static struct redir_ret __redir_name(const char *pathname, int use)
   if (i > 0) {
     canonicalized_pathname = strdup(pathname + i - 1);
   } else {
-    char current_directory[BIGBUF];
+    char *current_directory, dirbuf[BIGBUF];
     int len;
     struct branch *br;
     // FIXME - if error or overflow!:
-    getcwd(current_directory, sizeof(current_directory));
+    current_directory = getcwd(dirbuf, sizeof(dirbuf));
     /* now we need to find a mount point of cwd, if it is in overlay */
     br = lookup_branch(current_directory, LO_OVR);
     if (br && strcmp(br->mount_point, br->overlay)) {
