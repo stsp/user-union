@@ -338,6 +338,7 @@ C_WRP(char *, strrchr, (const char *s, int c), (s, c))
  */
 C_WRP_SAFE(size_t, fwrite, (const void *ptr, size_t size, size_t nmemb,
                      FILE *stream), (ptr, size, nmemb, stream))
+C_WRP_SAFE(int, fputs, (const char *s, FILE *stream), (s, stream))
 
 static FILE **my_stderr;
 static int (*orig_fprintf)(FILE *stream, const char *format, ...);
