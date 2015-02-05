@@ -201,6 +201,7 @@ int debug_level = 0;
 #endif
 
 #ifdef PRIVATE_LIBC_NAMESPACE
+#include <pthread.h>
 static void *dl_handle;
 
 static void __attribute__((constructor)) initialize(void)
@@ -250,6 +251,19 @@ static RTYPE wrp_##SYM DEF_ARGS \
     return ORIG_CODE; \
   return NEW_CODE; \
 }
+#define __C_WRP_SAFE(RTYPE, SYM, DEF_ARGS, ORIG_CODE, NEW_CODE) \
+static RTYPE wrp_##SYM DEF_ARGS \
+{ \
+  RTYPE __ret; \
+  int cstate; \
+  __C_WRP_COMMON(RTYPE, SYM, DEF_ARGS); \
+  if (!new_##SYM || !dl_handle) \
+    return ORIG_CODE; \
+  pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cstate); \
+  __ret = NEW_CODE; \
+  pthread_setcancelstate(cstate, NULL); \
+  return __ret; \
+}
 #define __C_WRP_VOID(SYM, DEF_ARGS, ORIG_CODE, NEW_CODE) \
 static void wrp_##SYM DEF_ARGS \
 { \
@@ -263,6 +277,13 @@ static void wrp_##SYM DEF_ARGS \
 
 #define C_WRP(RTYPE, SYM, DEF_ARGS, CALL_ARGS) \
 __C_WRP(RTYPE, SYM, DEF_ARGS, orig_##SYM CALL_ARGS, \
+    new_##SYM CALL_ARGS) \
+inline __attribute__((visibility("hidden"))) RTYPE SYM DEF_ARGS \
+{ \
+  return wrp_##SYM CALL_ARGS; \
+}
+#define C_WRP_SAFE(RTYPE, SYM, DEF_ARGS, CALL_ARGS) \
+__C_WRP_SAFE(RTYPE, SYM, DEF_ARGS, orig_##SYM CALL_ARGS, \
     new_##SYM CALL_ARGS) \
 inline __attribute__((visibility("hidden"))) RTYPE SYM DEF_ARGS \
 { \
@@ -310,14 +331,19 @@ C_WRP(char *, strrchr, (const char *s, int c), (s, c))
 
 /* fprintf() and other stdio functions are protected with mutex too, and
  * so they are the first-class offenders. But we use it only for debug
- * output, so wrap only stderr for now. */
-C_WRP(size_t, fwrite, (const void *ptr, size_t size, size_t nmemb,
+ * output, so wrap only stderr for now.
+ *
+ * Note: these may also be a cancelation points.
+ * Disable cancelation for them.
+ */
+C_WRP_SAFE(size_t, fwrite, (const void *ptr, size_t size, size_t nmemb,
                      FILE *stream), (ptr, size, nmemb, stream))
 
 static FILE **my_stderr;
 static int (*orig_fprintf)(FILE *stream, const char *format, ...);
 __C_WRP(int, vfprintf, (FILE *stream, const char *format, va_list ap),
     orig_vfprintf(stream, format, ap), ({
+  int cstate, ret;
   if (stream != stderr) {
     orig_fprintf(stderr, "FAIL, unsupported fprintf, please report bug\n");
     exit(1);
@@ -328,7 +354,10 @@ __C_WRP(int, vfprintf, (FILE *stream, const char *format, va_list ap),
     orig_fprintf(stderr, "FAIL, stderr does not resolve\n");
     exit(1);
   }
-  new_vfprintf(*my_stderr, format, ap);
+  pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cstate);
+  ret = new_vfprintf(*my_stderr, format, ap);
+  pthread_setcancelstate(cstate, NULL);
+  ret;
 }))
 
 inline __attribute__((visibility("hidden")))

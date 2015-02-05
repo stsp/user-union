@@ -150,7 +150,9 @@ AS_IF([test "x$enable_private_libc_namespace" = "xyes"],
   AC_DEFINE_UNQUOTED([PRIVATE_LIBC_NAMESPACE_LIBNAME],
     ["$PRIVATE_LIBC_NAMESPACE_LIBNAME"],
     [Name of library to invoke by private libc namespace wrapper])
-  AC_MSG_RESULT([$PRIVATE_LIBC_NAMESPACE_LIBNAME])])
+  AC_MSG_RESULT([$PRIVATE_LIBC_NAMESPACE_LIBNAME])
+  AC_CHECK_LIB([pthread], [pthread_setcancelstate])
+  ])
 
 AC_ARG_ENABLE(debug,
   AC_HELP_STRING([--enable-debug], [compile with debug support]),
