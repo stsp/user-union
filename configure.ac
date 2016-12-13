@@ -121,24 +121,36 @@ int f() {
 CFLAGS="$ORIGINAL_CFLAGS"
 AC_SUBST([CWARNINGFLAGS])
 
-
-
-AC_MSG_CHECKING([[to determine if private libc namespace should be enabled]])
 AC_ARG_ENABLE([private-libc-namespace],
   [AC_HELP_STRING([--enable-private-libc-namespace],
                   [use private libc namespace wrapper (to address the unsafe env where only signal-safe functions are guaranteed to work)])],
-  [AS_IF([test "x$private_libc_namespace" != "xyes"],
-     [enable_private_libc_namespace="no"])],
-  [AC_COMPILE_IFELSE(
-    [AC_LANG_PROGRAM([[#include <dlfcn.h>]],
-[
+  [
+    AC_MSG_CHECKING([[for gnu_inline attribute requirement]])
+    AC_COMPILE_IFELSE(
+      [AC_LANG_PROGRAM(
+        [[
+          #include <unistd.h>
+          inline __attribute__((visibility("hidden"))) char *getcwd(char *buf, size_t size);
+        ]]
+      )],
+      AC_MSG_RESULT([no]),
+      AC_MSG_RESULT([yes])
+      AC_DEFINE([USE_GNU_INLINE], 1, [Use gnu_inline attribute for glibc functions aliases])
+    )
+    AC_CHECK_LIB(dl, dlmopen)
+    AC_MSG_CHECKING([[if private libc namespace can be enabled]])
+    AC_LINK_IFELSE(
+      [AC_LANG_PROGRAM(
+        [[#include <dlfcn.h>]],
+        [
 void *dl_handle = dlmopen(LM_ID_NEWLM,
  "libc.so.6",
        RTLD_NOW | RTLD_LOCAL | RTLD_DEEPBIND);
-])],
+        ])],
     [enable_private_libc_namespace="yes"],
-    [enable_private_libc_namespace="no"])])
-AC_MSG_RESULT([$enable_private_libc_namespace])
+    [enable_private_libc_namespace="no"])
+    AC_MSG_RESULT([$enable_private_libc_namespace])
+  ])
 AS_IF([test "x$enable_private_libc_namespace" = "xyes"],
   [AC_DEFINE([PRIVATE_LIBC_NAMESPACE], 1, [Wrap C runtime functions that are not necessarily safe from signals (per POSIX) and that are used internally by this library.])
 

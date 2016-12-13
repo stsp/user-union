@@ -275,24 +275,30 @@ static void wrp_##SYM DEF_ARGS \
   NEW_CODE; \
 }
 
+#ifdef USE_GNU_INLINE
+#define INLINE_ATTRS __attribute__((visibility("hidden"),gnu_inline))
+#else
+#define INLINE_ATTRS __attribute__((visibility("hidden")))
+#endif
+
 #define C_WRP(RTYPE, SYM, DEF_ARGS, CALL_ARGS) \
 __C_WRP(RTYPE, SYM, DEF_ARGS, orig_##SYM CALL_ARGS, \
     new_##SYM CALL_ARGS) \
-inline __attribute__((visibility("hidden"))) RTYPE SYM DEF_ARGS \
+inline INLINE_ATTRS RTYPE SYM DEF_ARGS \
 { \
   return wrp_##SYM CALL_ARGS; \
 }
 #define C_WRP_SAFE(RTYPE, SYM, DEF_ARGS, CALL_ARGS) \
 __C_WRP_SAFE(RTYPE, SYM, DEF_ARGS, orig_##SYM CALL_ARGS, \
     new_##SYM CALL_ARGS) \
-inline __attribute__((visibility("hidden"))) RTYPE SYM DEF_ARGS \
+inline INLINE_ATTRS RTYPE SYM DEF_ARGS \
 { \
   return wrp_##SYM CALL_ARGS; \
 }
 #define C_WRP_VOID(SYM, DEF_ARGS, CALL_ARGS) \
 __C_WRP_VOID(SYM, DEF_ARGS, orig_##SYM CALL_ARGS, \
     new_##SYM CALL_ARGS) \
-inline __attribute__((visibility("hidden"))) void SYM DEF_ARGS \
+inline INLINE_ATTRS void SYM DEF_ARGS \
 { \
   wrp_##SYM CALL_ARGS; \
 }
@@ -326,6 +332,7 @@ C_WRP(char *, strcpy, (char *s1, const char *s2), (s1, s2))
 C_WRP(size_t, strlen, (const char *s), (s))
 #undef strncmp
 C_WRP(int, strncmp, (const char *s1, const char *s2, size_t n), (s1, s2, n))
+#undef strncpy
 C_WRP(char *, strncpy, (char *s1, const char *s2, size_t n), (s1, s2, n))
 C_WRP(char *, strrchr, (const char *s, int c), (s, c))
 
@@ -361,8 +368,7 @@ __C_WRP(int, vfprintf, (FILE *stream, const char *format, va_list ap),
   ret;
 }))
 
-inline __attribute__((visibility("hidden")))
-	int fprintf(FILE *stream, const char *format, ...)
+inline INLINE_ATTRS int fprintf(FILE *stream, const char *format, ...)
 {
   int ret;
   va_list ap;
